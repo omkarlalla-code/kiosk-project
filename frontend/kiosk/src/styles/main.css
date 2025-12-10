@@ -1,0 +1,161 @@
+/* Kiosk Client Styles */
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  background: #000;
+  color: #fff;
+  overflow: hidden;
+}
+
+#app {
+  width: 100vw;
+  height: 100vh;
+  position: relative;
+}
+
+/* Image display */
+#image-container {
+  width: 100%;
+  height: 100%;
+  position: relative;
+}
+
+.image-buffer {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-size: cover;
+  background-position: center;
+  opacity: 0;
+  transition: opacity 0.4s ease-in-out;
+}
+
+/* UI Overlay */
+#ui-overlay {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  padding: 40px;
+  background: linear-gradient(to top, rgba(0, 0, 0, 0.8), transparent);
+  pointer-events: none;
+}
+
+#caption {
+  font-size: 32px;
+  font-weight: bold;
+  margin-bottom: 10px;
+}
+
+#credit {
+  font-size: 16px;
+  opacity: 0.7;
+}
+
+/* Payment Modal */
+#payment-modal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.9);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.modal-content {
+  background: #1a1a1a;
+  padding: 40px;
+  border-radius: 16px;
+  text-align: center;
+  max-width: 500px;
+}
+
+.modal-content h2 {
+  margin-bottom: 20px;
+  font-size: 28px;
+}
+
+#payment-qr {
+  width: 300px;
+  height: 300px;
+  margin: 20px auto;
+  display: block;
+  background: #fff;
+  padding: 10px;
+  border-radius: 8px;
+}
+
+#payment-amount {
+  font-size: 24px;
+  margin: 20px 0;
+  font-weight: bold;
+}
+
+#payment-status {
+  font-size: 18px;
+  margin-top: 20px;
+}
+
+.status-waiting {
+  color: #ffa500;
+}
+
+.status-success {
+  color: #00ff00;
+}
+
+.status-error {
+  color: #ff0000;
+}
+
+.deep-link-btn {
+  margin-top: 20px;
+  padding: 12px 24px;
+  font-size: 18px;
+  background: #0066ff;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background 0.3s;
+}
+
+.deep-link-btn:hover {
+  background: #0052cc;
+}
+
+/* Status Indicator */
+#status {
+  position: absolute;
+  top: 20px;
+  right: 20px;
+  padding: 12px 20px;
+  background: rgba(0, 0, 0, 0.7);
+  border-radius: 8px;
+  font-size: 16px;
+  z-index: 999;
+}
+
+/* Gesture Canvas (optional debug view) */
+#gesture-canvas {
+  position: absolute;
+  top: 20px;
+  left: 20px;
+  width: 320px;
+  height: 240px;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  border-radius: 8px;
+  z-index: 998;
+}

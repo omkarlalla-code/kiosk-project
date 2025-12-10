@@ -1,0 +1,32 @@
+{
+  "name": "kiosk-project",
+  "version": "0.1.0",
+  "description": "Greek Civilization Kiosk - Real-time Speech + Image MVP",
+  "private": true,
+  "scripts": {
+    "install:all": "npm run install:services && npm run install:frontend",
+    "install:services": "cd services/orchestrator && npm install && cd ../image-screener && npm install && cd ../mock-tts && npm install && cd ../payment-backend && npm install",
+    "install:frontend": "cd frontend/kiosk && npm install",
+    "dev:orchestrator": "cd services/orchestrator && npm run dev",
+    "dev:image-screener": "cd services/image-screener && npm run dev",
+    "dev:mock-tts": "cd services/mock-tts && npm run dev",
+    "dev:payment": "cd services/payment-backend && npm run dev",
+    "dev:kiosk": "cd frontend/kiosk && npm run dev",
+    "test": "npm run test:services",
+    "test:services": "cd services/orchestrator && npm test"
+  },
+  "keywords": [
+    "kiosk",
+    "webrtc",
+    "tts",
+    "gesture-control",
+    "payment",
+    "livekit"
+  ],
+  "author": "",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/yourusername/kiosk-project"
+  }
+}

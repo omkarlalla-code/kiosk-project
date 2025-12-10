@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Greek Civilization Kiosk</title>
+  <link rel="stylesheet" href="./src/styles/main.css">
+</head>
+<body>
+  <div id="app">
+    <!-- Video element for webcam (MediaPipe) -->
+    <video id="webcam" autoplay playsinline style="display: none;"></video>
+
+    <!-- Canvas for gesture visualization (optional) -->
+    <canvas id="gesture-canvas" style="display: none;"></canvas>
+
+    <!-- Image display container (two-buffer for crossfade) -->
+    <div id="image-container">
+      <div id="image-buffer-a" class="image-buffer"></div>
+      <div id="image-buffer-b" class="image-buffer"></div>
+    </div>
+
+    <!-- UI overlays -->
+    <div id="ui-overlay">
+      <div id="caption"></div>
+      <div id="credit"></div>
+    </div>
+
+    <!-- Payment UI -->
+    <div id="payment-modal" style="display: none;">
+      <div class="modal-content">
+        <h2>Scan to Pay</h2>
+        <img id="payment-qr" src="" alt="Payment QR Code" />
+        <p id="payment-amount"></p>
+        <div id="payment-status">Waiting for payment...</div>
+      </div>
+    </div>
+
+    <!-- Status indicator -->
+    <div id="status">Connecting...</div>
+  </div>
+
+  <script type="module" src="./src/main.js"></script>
+</body>
+</html>
