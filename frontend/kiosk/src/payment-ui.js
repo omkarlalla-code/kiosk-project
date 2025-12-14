@@ -9,27 +9,34 @@ export class PaymentUI {
     this.qrEl = options.qrEl;
     this.amountEl = options.amountEl;
     this.statusEl = options.statusEl;
+    this.timerEl = options.timerEl;
 
     this.currentPaymentId = null;
     this.signatureSecret = null; // Should be configured securely
+    this.expiryTimer = null;
+    this.expiryTimestamp = null;
   }
 
   showPayment(message) {
-    const { payment_id, upi_uri, qr_base64 } = message;
+    const { payment_id, upi_uri, qr_base64, expires_at } = message;
 
     this.currentPaymentId = payment_id;
+    this.expiryTimestamp = expires_at;
 
     // Display QR code
     this.qrEl.src = `data:image/png;base64,${qr_base64}`;
 
     // Show amount
     if (message.amount) {
-      this.amountEl.textContent = `Amount: ₹${message.amount}`;
+      this.amountEl.textContent = `Amount: ₹${(message.amount / 100).toFixed(2)}`;
     }
 
     // Update status
-    this.statusEl.textContent = 'Waiting for payment...';
+    this.statusEl.textContent = 'Scan QR code to pay';
     this.statusEl.className = 'status-waiting';
+
+    // Start countdown timer
+    this.startCountdown(expires_at);
 
     // Show modal
     this.modalEl.style.display = 'flex';
@@ -94,8 +101,48 @@ export class PaymentUI {
     this.statusEl.className = 'status-error';
   }
 
+  startCountdown(expiresAt) {
+    // Clear existing timer
+    if (this.expiryTimer) {
+      clearInterval(this.expiryTimer);
+    }
+
+    const updateTimer = () => {
+      const now = Date.now();
+      const remaining = Math.max(0, expiresAt - now);
+
+      if (remaining === 0) {
+        clearInterval(this.expiryTimer);
+        this.showError('Payment expired');
+        setTimeout(() => this.hide(), 2000);
+        return;
+      }
+
+      const minutes = Math.floor(remaining / 60000);
+      const seconds = Math.floor((remaining % 60000) / 1000);
+
+      if (this.timerEl) {
+        this.timerEl.textContent = `${minutes}:${seconds.toString().padStart(2, '0')}`;
+      }
+    };
+
+    updateTimer();
+    this.expiryTimer = setInterval(updateTimer, 1000);
+  }
+
+  cancel() {
+    if (this.expiryTimer) {
+      clearInterval(this.expiryTimer);
+    }
+    this.hide();
+  }
+
   hide() {
+    if (this.expiryTimer) {
+      clearInterval(this.expiryTimer);
+    }
     this.modalEl.style.display = 'none';
     this.currentPaymentId = null;
+    this.expiryTimestamp = null;
   }
 }

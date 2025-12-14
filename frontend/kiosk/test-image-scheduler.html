@@ -1,0 +1,288 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Image Scheduler Test</title>
+  <style>
+    body {
+      margin: 0;
+      padding: 0;
+      font-family: Arial, sans-serif;
+      background: #000;
+      color: #fff;
+    }
+
+    .container {
+      display: flex;
+      flex-direction: column;
+      height: 100vh;
+    }
+
+    .image-container {
+      position: relative;
+      flex: 1;
+      overflow: hidden;
+    }
+
+    .image-buffer {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background-size: cover;
+      background-position: center;
+      transition: opacity 0.4s ease-in-out;
+    }
+
+    #bufferA {
+      opacity: 1;
+      z-index: 1;
+    }
+
+    #bufferB {
+      opacity: 0;
+      z-index: 2;
+    }
+
+    .info-overlay {
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      background: linear-gradient(transparent, rgba(0,0,0,0.8));
+      padding: 20px;
+      z-index: 10;
+    }
+
+    .caption {
+      font-size: 24px;
+      font-weight: bold;
+      margin-bottom: 8px;
+    }
+
+    .credit {
+      font-size: 14px;
+      color: #aaa;
+    }
+
+    .controls {
+      background: #222;
+      padding: 20px;
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    button {
+      background: #007bff;
+      color: white;
+      border: none;
+      padding: 10px 20px;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 14px;
+    }
+
+    button:hover {
+      background: #0056b3;
+    }
+
+    button:disabled {
+      background: #666;
+      cursor: not-allowed;
+    }
+
+    .log {
+      background: #111;
+      padding: 10px;
+      max-height: 200px;
+      overflow-y: auto;
+      font-family: monospace;
+      font-size: 12px;
+    }
+
+    .log-entry {
+      margin: 2px 0;
+      padding: 2px;
+    }
+
+    .log-entry.preload { color: #4caf50; }
+    .log-entry.show { color: #2196f3; }
+    .log-entry.error { color: #f44336; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="image-container">
+      <div id="bufferA" class="image-buffer"></div>
+      <div id="bufferB" class="image-buffer"></div>
+      <div class="info-overlay">
+        <div id="caption" class="caption"></div>
+        <div id="credit" class="credit"></div>
+      </div>
+    </div>
+
+    <div class="controls">
+      <button id="testPreload">Test Preload</button>
+      <button id="testShow">Test Show Image</button>
+      <button id="testSequence">Test Sequence</button>
+      <button id="testSync">Test Playout Sync</button>
+      <button id="clearLog">Clear Log</button>
+    </div>
+
+    <div class="log" id="log"></div>
+  </div>
+
+  <script type="module">
+    import { ImageScheduler } from './src/image-scheduler.js';
+
+    // Initialize scheduler
+    const scheduler = new ImageScheduler({
+      containerA: document.getElementById('bufferA'),
+      containerB: document.getElementById('bufferB'),
+      captionEl: document.getElementById('caption'),
+      creditEl: document.getElementById('credit')
+    });
+
+    // Logging
+    function log(message, type = 'info') {
+      const logEl = document.getElementById('log');
+      const entry = document.createElement('div');
+      entry.className = `log-entry ${type}`;
+      entry.textContent = `[${new Date().toLocaleTimeString()}] ${message}`;
+      logEl.insertBefore(entry, logEl.firstChild);
+    }
+
+    // Test images (using placeholder images)
+    const testImages = [
+      {
+        id: 'parthenon_1',
+        cdn_url: 'https://images.unsplash.com/photo-1555993539-1732b0258235?w=1200&h=800&fit=crop',
+        caption: 'The Parthenon  Athens, 447 BC',
+        credit: 'Photo: Unsplash'
+      },
+      {
+        id: 'acropolis_1',
+        cdn_url: 'https://images.unsplash.com/photo-1603565816030-6b389eeb23cb?w=1200&h=800&fit=crop',
+        caption: 'The Acropolis of Athens',
+        credit: 'Photo: Unsplash'
+      },
+      {
+        id: 'colosseum_1',
+        cdn_url: 'https://images.unsplash.com/photo-1552832230-c0197dd311b5?w=1200&h=800&fit=crop',
+        caption: 'Roman Colosseum',
+        credit: 'Photo: Unsplash'
+      }
+    ];
+
+    // Test: Preload single image
+    document.getElementById('testPreload').addEventListener('click', async () => {
+      log('Testing preload...', 'preload');
+      try {
+        await scheduler.preload({
+          id: testImages[0].id,
+          cdn_url: testImages[0].cdn_url,
+          ttl_ms: 30000
+        });
+        log(` Preloaded: ${testImages[0].id}`, 'preload');
+      } catch (error) {
+        log(` Preload failed: ${error.message}`, 'error');
+      }
+    });
+
+    // Test: Show image
+    document.getElementById('testShow').addEventListener('click', () => {
+      log('Testing show image...', 'show');
+      scheduler.scheduleShow({
+        id: testImages[0].id,
+        playout_ts: performance.now(),
+        transition: 'crossfade',
+        duration_ms: 400,
+        caption: testImages[0].caption,
+        credit: testImages[0].credit
+      });
+      log(` Showing: ${testImages[0].id}`, 'show');
+    });
+
+    // Test: Image sequence
+    document.getElementById('testSequence').addEventListener('click', async () => {
+      log('Testing image sequence...', 'info');
+
+      // Preload all images
+      for (const img of testImages) {
+        await scheduler.preload({
+          id: img.id,
+          cdn_url: img.cdn_url,
+          ttl_ms: 60000
+        });
+        log(`Preloaded: ${img.id}`, 'preload');
+      }
+
+      // Show them in sequence with delays
+      testImages.forEach((img, index) => {
+        setTimeout(() => {
+          scheduler.scheduleShow({
+            id: img.id,
+            playout_ts: performance.now(),
+            transition: 'crossfade',
+            duration_ms: 400,
+            caption: img.caption,
+            credit: img.credit
+          });
+          log(`Showing: ${img.id}`, 'show');
+        }, index * 2000);
+      });
+    });
+
+    // Test: Playout timestamp sync
+    document.getElementById('testSync').addEventListener('click', async () => {
+      log('Testing playout_ts synchronization...', 'info');
+
+      // Preload images
+      await scheduler.preload({
+        id: testImages[0].id,
+        cdn_url: testImages[0].cdn_url,
+        ttl_ms: 30000
+      });
+      await scheduler.preload({
+        id: testImages[1].id,
+        cdn_url: testImages[1].cdn_url,
+        ttl_ms: 30000
+      });
+
+      const now = performance.now();
+
+      // Schedule first image 1 second from now
+      scheduler.scheduleShow({
+        id: testImages[0].id,
+        playout_ts: now + 1000,
+        transition: 'crossfade',
+        duration_ms: 400,
+        caption: testImages[0].caption,
+        credit: testImages[0].credit
+      });
+      log(`Scheduled ${testImages[0].id} at +1000ms`, 'show');
+
+      // Schedule second image 3 seconds from now
+      scheduler.scheduleShow({
+        id: testImages[1].id,
+        playout_ts: now + 3000,
+        transition: 'crossfade',
+        duration_ms: 400,
+        caption: testImages[1].caption,
+        credit: testImages[1].credit
+      });
+      log(`Scheduled ${testImages[1].id} at +3000ms`, 'show');
+    });
+
+    // Clear log
+    document.getElementById('clearLog').addEventListener('click', () => {
+      document.getElementById('log').innerHTML = '';
+    });
+
+    log('Image Scheduler Test Ready');
+  </script>
+</body>
+</html>

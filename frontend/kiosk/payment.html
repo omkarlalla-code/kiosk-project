@@ -1,0 +1,356 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Payment - Greek Civilization Kiosk</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      background: linear-gradient(135deg, #1a1a1a 0%, #2d2d2d 100%);
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+      color: #fff;
+    }
+
+    .payment-container {
+      background: #2a2a2a;
+      border-radius: 16px;
+      padding: 50px;
+      max-width: 600px;
+      width: 90%;
+      text-align: center;
+      box-shadow: 0 8px 32px rgba(0,0,0,0.5);
+    }
+
+    .header {
+      margin-bottom: 30px;
+    }
+
+    h1 {
+      font-size: 36px;
+      margin-bottom: 10px;
+      color: #fff;
+    }
+
+    .amount {
+      font-size: 48px;
+      font-weight: bold;
+      color: #4caf50;
+      margin: 20px 0;
+    }
+
+    .timer {
+      font-size: 32px;
+      color: #ff9800;
+      font-weight: bold;
+      margin-bottom: 30px;
+    }
+
+    .qr-container {
+      background: white;
+      padding: 30px;
+      border-radius: 12px;
+      margin: 30px auto;
+      display: inline-block;
+    }
+
+    #qrCode {
+      width: 300px;
+      height: 300px;
+      display: block;
+    }
+
+    .instructions {
+      font-size: 18px;
+      color: #ccc;
+      margin: 20px 0;
+      line-height: 1.6;
+    }
+
+    .status {
+      margin: 30px 0;
+      padding: 20px;
+      border-radius: 8px;
+      font-size: 20px;
+      font-weight: 500;
+    }
+
+    .status-waiting {
+      background: #ff9800;
+      color: #000;
+    }
+
+    .status-success {
+      background: #4caf50;
+      color: #fff;
+    }
+
+    .status-error {
+      background: #f44336;
+      color: #fff;
+    }
+
+    .button-group {
+      margin-top: 30px;
+      display: flex;
+      gap: 20px;
+      justify-content: center;
+    }
+
+    button {
+      padding: 16px 40px;
+      font-size: 18px;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: transform 0.2s, box-shadow 0.2s;
+    }
+
+    button:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+    }
+
+    .btn-upi {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+    }
+
+    .btn-cancel {
+      background: #666;
+      color: white;
+    }
+
+    .loading {
+      display: none;
+      margin: 30px 0;
+    }
+
+    .loading.active {
+      display: block;
+    }
+
+    .spinner {
+      border: 4px solid #333;
+      border-top: 4px solid #4caf50;
+      border-radius: 50%;
+      width: 50px;
+      height: 50px;
+      animation: spin 1s linear infinite;
+      margin: 0 auto;
+    }
+
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+  </style>
+</head>
+<body>
+  <div class="payment-container">
+    <div class="header">
+      <h1>UPI Payment</h1>
+      <div class="amount" id="amount">₹500.00</div>
+      <div class="timer" id="timer">5:00</div>
+    </div>
+
+    <div class="loading" id="loading">
+      <div class="spinner"></div>
+      <p style="margin-top: 20px;">Creating payment session...</p>
+    </div>
+
+    <div id="qrContainer" class="qr-container" style="display: none;">
+      <img id="qrCode" alt="QR Code">
+    </div>
+
+    <div class="instructions" id="instructions" style="display: none;">
+      Scan the QR code with any UPI app to pay
+    </div>
+
+    <div id="status" class="status status-waiting" style="display: none;">
+      Waiting for payment...
+    </div>
+
+    <div class="button-group" id="buttonGroup" style="display: none;">
+      <button class="btn-upi" id="upiButton" style="display: none;">
+        Open UPI App
+      </button>
+      <button class="btn-cancel" onclick="cancelPayment()">
+        Cancel
+      </button>
+    </div>
+  </div>
+
+  <script type="module">
+    import { PaymentUI } from './src/payment-ui.js';
+
+    const PAYMENT_BACKEND_URL = 'http://localhost:3003';
+    const ORCHESTRATOR_URL = 'http://localhost:3000';
+
+    let paymentUI;
+    let currentPaymentId = null;
+    let pollingInterval = null;
+
+    // Initialize payment UI
+    function initPaymentUI() {
+      paymentUI = new PaymentUI({
+        modalEl: document.createElement('div'), // Not using modal, using page
+        qrEl: document.getElementById('qrCode'),
+        amountEl: document.getElementById('amount'),
+        statusEl: document.getElementById('status'),
+        timerEl: document.getElementById('timer')
+      });
+    }
+
+    // Create payment session
+    async function createPaymentSession() {
+      try {
+        document.getElementById('loading').classList.add('active');
+
+        const response = await fetch(`${PAYMENT_BACKEND_URL}/create_session`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            amount: 50000, // ₹500.00 in paise
+            currency: 'INR',
+            context: 'greek_civilization_tour',
+            session_id: 'kiosk-session-' + Date.now(),
+            kiosk_id: 'kiosk-001'
+          })
+        });
+
+        if (!response.ok) {
+          throw new Error('Failed to create payment session');
+        }
+
+        const paymentData = await response.json();
+        currentPaymentId = paymentData.payment_id;
+
+        // Hide loading, show payment UI
+        document.getElementById('loading').classList.remove('active');
+        document.getElementById('qrContainer').style.display = 'inline-block';
+        document.getElementById('instructions').style.display = 'block';
+        document.getElementById('status').style.display = 'block';
+        document.getElementById('buttonGroup').style.display = 'flex';
+
+        // Set QR code
+        document.getElementById('qrCode').src = `data:image/png;base64,${paymentData.qr_base64}`;
+
+        // Set UPI deep link button
+        const upiButton = document.getElementById('upiButton');
+        upiButton.style.display = 'inline-block';
+        upiButton.onclick = () => {
+          window.location.href = paymentData.upi_uri;
+        };
+
+        // Start countdown timer
+        startCountdown(paymentData.expires_at);
+
+        // Start polling for payment status
+        startPolling();
+
+        console.log('Payment session created:', currentPaymentId);
+      } catch (error) {
+        console.error('Error creating payment session:', error);
+        showError('Failed to create payment session. Please try again.');
+      }
+    }
+
+    // Start countdown timer
+    function startCountdown(expiresAt) {
+      const timerEl = document.getElementById('timer');
+
+      const updateTimer = () => {
+        const now = Date.now();
+        const remaining = Math.max(0, expiresAt - now);
+
+        if (remaining === 0) {
+          showError('Payment expired');
+          setTimeout(() => {
+            window.location.href = 'screensaver.html';
+          }, 2000);
+          return;
+        }
+
+        const minutes = Math.floor(remaining / 60000);
+        const seconds = Math.floor((remaining % 60000) / 1000);
+        timerEl.textContent = `${minutes}:${seconds.toString().padStart(2, '0')}`;
+      };
+
+      updateTimer();
+      setInterval(updateTimer, 1000);
+    }
+
+    // Poll payment status
+    function startPolling() {
+      pollingInterval = setInterval(async () => {
+        try {
+          const response = await fetch(`${PAYMENT_BACKEND_URL}/status/${currentPaymentId}`);
+          const data = await response.json();
+
+          if (data.status === 'success') {
+            clearInterval(pollingInterval);
+            showSuccess();
+          } else if (data.status === 'failed') {
+            clearInterval(pollingInterval);
+            showError('Payment failed');
+          }
+        } catch (error) {
+          console.error('Error polling status:', error);
+        }
+      }, 2000); // Poll every 2 seconds
+    }
+
+    // Show success and navigate to experience
+    function showSuccess() {
+      const statusEl = document.getElementById('status');
+      statusEl.textContent = 'Payment successful! Starting experience...';
+      statusEl.className = 'status status-success';
+
+      setTimeout(() => {
+        // Navigate to experience page
+        window.location.href = 'experience.html';
+      }, 2000);
+    }
+
+    // Show error
+    function showError(message) {
+      const statusEl = document.getElementById('status');
+      statusEl.textContent = message;
+      statusEl.className = 'status status-error';
+    }
+
+    // Cancel payment
+    window.cancelPayment = function() {
+      if (pollingInterval) {
+        clearInterval(pollingInterval);
+      }
+      window.location.href = 'screensaver.html';
+    };
+
+    // For testing: simulate payment success
+    window.simulatePayment = async function() {
+      if (!currentPaymentId) return;
+
+      await fetch(`${PAYMENT_BACKEND_URL}/mock/complete_payment/${currentPaymentId}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: 'success' })
+      });
+    };
+
+    // Initialize
+    initPaymentUI();
+    createPaymentSession();
+  </script>
+</body>
+</html>

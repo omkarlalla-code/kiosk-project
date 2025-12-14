@@ -1,0 +1,430 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Kiosk Integration Test</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: #000;
+      color: #fff;
+      overflow: hidden;
+    }
+
+    .kiosk-container {
+      position: relative;
+      width: 100vw;
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* Image Display Area */
+    .image-container {
+      position: relative;
+      flex: 1;
+      overflow: hidden;
+    }
+
+    .image-buffer {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background-size: cover;
+      background-position: center;
+      background-color: #1a1a1a;
+    }
+
+    #bufferA {
+      opacity: 1;
+      z-index: 1;
+    }
+
+    #bufferB {
+      opacity: 0;
+      z-index: 2;
+    }
+
+    .info-overlay {
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      background: linear-gradient(transparent, rgba(0,0,0,0.9));
+      padding: 30px;
+      z-index: 10;
+    }
+
+    .caption {
+      font-size: 28px;
+      font-weight: bold;
+      margin-bottom: 10px;
+    }
+
+    .credit {
+      font-size: 16px;
+      color: #aaa;
+    }
+
+    /* Connection Status Indicator */
+    .status-indicator {
+      position: absolute;
+      top: 20px;
+      right: 20px;
+      padding: 10px 20px;
+      border-radius: 20px;
+      background: rgba(0,0,0,0.7);
+      font-size: 14px;
+      z-index: 20;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .status-dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      background: #666;
+    }
+
+    .status-dot.connecting { background: #ff9800; animation: pulse 1s infinite; }
+    .status-dot.connected { background: #4caf50; }
+    .status-dot.error { background: #f44336; }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.5; }
+    }
+
+    /* Control Panel */
+    .control-panel {
+      background: #1a1a1a;
+      padding: 20px;
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      align-items: center;
+      z-index: 30;
+    }
+
+    button {
+      background: #007bff;
+      color: white;
+      border: none;
+      padding: 12px 24px;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 14px;
+    }
+
+    button:hover {
+      background: #0056b3;
+    }
+
+    button:disabled {
+      background: #666;
+      cursor: not-allowed;
+    }
+
+    button.success {
+      background: #4caf50;
+    }
+
+    button.danger {
+      background: #f44336;
+    }
+
+    .log-container {
+      flex: 1;
+      max-width: 400px;
+      background: #111;
+      border-radius: 4px;
+      padding: 10px;
+      max-height: 100px;
+      overflow-y: auto;
+      font-family: monospace;
+      font-size: 11px;
+    }
+
+    .log-entry {
+      margin: 2px 0;
+    }
+
+    .log-entry.info { color: #2196f3; }
+    .log-entry.success { color: #4caf50; }
+    .log-entry.error { color: #f44336; }
+    .log-entry.data { color: #ff9800; }
+
+    /* Payment Modal */
+    #paymentModal {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.95);
+      justify-content: center;
+      align-items: center;
+      z-index: 1000;
+    }
+
+    .modal-content {
+      background: #2a2a2a;
+      border-radius: 12px;
+      padding: 40px;
+      max-width: 500px;
+      width: 90%;
+      text-align: center;
+    }
+
+    #amount {
+      font-size: 32px;
+      font-weight: bold;
+      color: #4caf50;
+      margin: 10px 0;
+    }
+
+    #timer {
+      font-size: 24px;
+      color: #ff9800;
+      font-weight: bold;
+      margin-bottom: 20px;
+    }
+
+    .qr-container {
+      background: white;
+      padding: 20px;
+      border-radius: 8px;
+      margin: 20px auto;
+      display: inline-block;
+    }
+
+    #qrCode {
+      width: 256px;
+      height: 256px;
+    }
+
+    #status {
+      margin: 20px 0;
+      padding: 15px;
+      border-radius: 4px;
+      font-size: 18px;
+    }
+
+    .status-waiting { background: #ff9800; color: #000; }
+    .status-success { background: #4caf50; color: #fff; }
+    .status-error { background: #f44336; color: #fff; }
+  </style>
+</head>
+<body>
+  <div class="kiosk-container">
+    <!-- Image Display -->
+    <div class="image-container">
+      <div id="bufferA" class="image-buffer"></div>
+      <div id="bufferB" class="image-buffer"></div>
+      <div class="info-overlay">
+        <div id="caption" class="caption"></div>
+        <div id="credit" class="credit"></div>
+      </div>
+    </div>
+
+    <!-- Status Indicator -->
+    <div class="status-indicator">
+      <div id="statusDot" class="status-dot"></div>
+      <span id="statusText">Disconnected</span>
+    </div>
+
+    <!-- Control Panel -->
+    <div class="control-panel">
+      <button id="connectBtn">Connect to LiveKit</button>
+      <button id="disconnectBtn" disabled>Disconnect</button>
+      <button id="requestPaymentBtn" disabled>Request Payment</button>
+      <div class="log-container" id="logContainer"></div>
+    </div>
+
+    <!-- Payment Modal -->
+    <div id="paymentModal">
+      <div class="modal-content">
+        <h2>UPI Payment</h2>
+        <div id="amount"></div>
+        <div id="timer">5:00</div>
+        <div class="qr-container">
+          <img id="qrCode" alt="QR Code">
+        </div>
+        <div id="paymentStatus" class="status-waiting"></div>
+        <button class="danger" onclick="window.kioskApp.cancelPayment()">Cancel</button>
+      </div>
+    </div>
+  </div>
+
+  <script type="module">
+    import { LiveKitClient } from './src/livekit-client.js';
+    import { ImageScheduler } from './src/image-scheduler.js';
+    import { PaymentUI } from './src/payment-ui.js';
+
+    class KioskApp {
+      constructor() {
+        this.orchestratorUrl = 'http://localhost:3000';
+        this.paymentUrl = 'http://localhost:3003';
+
+        // Initialize components
+        this.imageScheduler = new ImageScheduler({
+          containerA: document.getElementById('bufferA'),
+          containerB: document.getElementById('bufferB'),
+          captionEl: document.getElementById('caption'),
+          creditEl: document.getElementById('credit')
+        });
+
+        this.paymentUI = new PaymentUI({
+          modalEl: document.getElementById('paymentModal'),
+          qrEl: document.getElementById('qrCode'),
+          amountEl: document.getElementById('amount'),
+          statusEl: document.getElementById('paymentStatus'),
+          timerEl: document.getElementById('timer')
+        });
+
+        this.liveKitClient = new LiveKitClient({
+          orchestratorUrl: this.orchestratorUrl,
+          kioskId: 'kiosk-test-001',
+          onAudioTrack: this.handleAudioTrack.bind(this),
+          onDataMessage: this.handleDataMessage.bind(this),
+          onConnectionStateChange: this.handleConnectionState.bind(this)
+        });
+
+        this.setupUI();
+      }
+
+      setupUI() {
+        document.getElementById('connectBtn').addEventListener('click', () => this.connect());
+        document.getElementById('disconnectBtn').addEventListener('click', () => this.disconnect());
+        document.getElementById('requestPaymentBtn').addEventListener('click', () => this.requestPayment());
+      }
+
+      async connect() {
+        try {
+          this.log('Connecting to LiveKit...', 'info');
+          await this.liveKitClient.connect();
+
+          document.getElementById('connectBtn').disabled = true;
+          document.getElementById('disconnectBtn').disabled = false;
+          document.getElementById('requestPaymentBtn').disabled = false;
+        } catch (error) {
+          this.log(`Connection failed: ${error.message}`, 'error');
+        }
+      }
+
+      disconnect() {
+        this.liveKitClient.disconnect();
+        document.getElementById('connectBtn').disabled = false;
+        document.getElementById('disconnectBtn').disabled = true;
+        document.getElementById('requestPaymentBtn').disabled = true;
+      }
+
+      handleAudioTrack(track) {
+        this.log('Audio track received', 'success');
+        const audioContext = this.liveKitClient.getAudioContext();
+        if (audioContext) {
+          this.imageScheduler.setAudioContext(audioContext);
+        }
+      }
+
+      handleDataMessage(message) {
+        this.log(`Data: ${message.type}`, 'data');
+
+        switch (message.type) {
+          case 'img_preload':
+            this.imageScheduler.preload(message);
+            break;
+
+          case 'img_show':
+            this.imageScheduler.scheduleShow(message);
+            break;
+
+          case 'request_payment':
+            this.showPaymentRequest(message);
+            break;
+
+          case 'payment_confirm':
+            this.paymentUI.handleConfirmation(message);
+            break;
+
+          default:
+            console.log('Unknown message type:', message);
+        }
+      }
+
+      handleConnectionState(state) {
+        const statusDot = document.getElementById('statusDot');
+        const statusText = document.getElementById('statusText');
+
+        statusDot.className = `status-dot ${state}`;
+        statusText.textContent = state.charAt(0).toUpperCase() + state.slice(1);
+
+        this.log(`Connection state: ${state}`, state === 'connected' ? 'success' : 'info');
+      }
+
+      async showPaymentRequest(message) {
+        try {
+          this.log('Creating payment session...', 'info');
+
+          const response = await fetch(`${this.paymentUrl}/create_session`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              amount: message.amount,
+              currency: message.currency,
+              context: message.context,
+              session_id: message.session_id,
+              kiosk_id: 'kiosk-test-001'
+            })
+          });
+
+          const paymentData = await response.json();
+          this.paymentUI.showPayment(paymentData);
+          this.log('Payment UI displayed', 'success');
+        } catch (error) {
+          this.log(`Payment error: ${error.message}`, 'error');
+        }
+      }
+
+      async requestPayment() {
+        // Simulate payment request for testing
+        this.handleDataMessage({
+          type: 'request_payment',
+          amount: 50000,
+          currency: 'INR',
+          context: 'greek_civilization_tour',
+          session_id: 'test-session'
+        });
+      }
+
+      cancelPayment() {
+        this.paymentUI.cancel();
+      }
+
+      log(message, type = 'info') {
+        const logContainer = document.getElementById('logContainer');
+        const entry = document.createElement('div');
+        entry.className = `log-entry ${type}`;
+        entry.textContent = `[${new Date().toLocaleTimeString()}] ${message}`;
+        logContainer.insertBefore(entry, logContainer.firstChild);
+      }
+    }
+
+    // Initialize app
+    window.kioskApp = new KioskApp();
+    window.kioskApp.log('Kiosk app initialized', 'success');
+  </script>
+</body>
+</html>

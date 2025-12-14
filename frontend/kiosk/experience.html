@@ -1,0 +1,391 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Experience - Greek Civilization</title>
+  <script type="importmap">
+    {
+      "imports": {
+        "livekit-client": "https://cdn.jsdelivr.net/npm/livekit-client@2.0.0/dist/livekit-client.esm.mjs"
+      }
+    }
+  </script>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      background: #000;
+      overflow: hidden;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    }
+
+    .experience-container {
+      position: relative;
+      width: 100vw;
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* Image Display Area */
+    .image-container {
+      position: relative;
+      flex: 1;
+      overflow: hidden;
+    }
+
+    .image-buffer {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background-size: cover;
+      background-position: center;
+      background-color: #1a1a1a;
+    }
+
+    #bufferA {
+      opacity: 1;
+      z-index: 1;
+    }
+
+    #bufferB {
+      opacity: 0;
+      z-index: 2;
+    }
+
+    /* Info Overlay */
+    .info-overlay {
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      background: linear-gradient(transparent, rgba(0,0,0,0.9));
+      padding: 40px;
+      z-index: 10;
+    }
+
+    .caption {
+      font-size: 32px;
+      font-weight: bold;
+      margin-bottom: 12px;
+      color: #fff;
+    }
+
+    .credit {
+      font-size: 18px;
+      color: #aaa;
+    }
+
+    /* Connection Status */
+    .status-bar {
+      position: absolute;
+      top: 20px;
+      right: 20px;
+      padding: 12px 24px;
+      border-radius: 20px;
+      background: rgba(0,0,0,0.7);
+      font-size: 14px;
+      z-index: 20;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .status-dot {
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+      background: #666;
+    }
+
+    .status-dot.connecting {
+      background: #ff9800;
+      animation: pulse 1s infinite;
+    }
+
+    .status-dot.connected {
+      background: #4caf50;
+    }
+
+    .status-dot.error {
+      background: #f44336;
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.5; }
+    }
+
+    /* Loading Overlay */
+    .loading-overlay {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0,0,0,0.9);
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      z-index: 100;
+    }
+
+    .loading-overlay.hidden {
+      display: none;
+    }
+
+    .spinner {
+      border: 6px solid #333;
+      border-top: 6px solid #4caf50;
+      border-radius: 50%;
+      width: 80px;
+      height: 80px;
+      animation: spin 1s linear infinite;
+      margin-bottom: 30px;
+    }
+
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+
+    .loading-text {
+      font-size: 24px;
+      color: #fff;
+    }
+  </style>
+</head>
+<body>
+  <div class="experience-container">
+    <!-- Loading Overlay -->
+    <div id="loadingOverlay" class="loading-overlay">
+      <div class="spinner"></div>
+      <div class="loading-text">Connecting to experience...</div>
+    </div>
+
+    <!-- Image Display -->
+    <div class="image-container">
+      <div id="bufferA" class="image-buffer"></div>
+      <div id="bufferB" class="image-buffer"></div>
+      <div class="info-overlay">
+        <div id="caption" class="caption"></div>
+        <div id="credit" class="credit"></div>
+      </div>
+    </div>
+
+    <!-- Status Bar -->
+    <div class="status-bar">
+      <div id="statusDot" class="status-dot connecting"></div>
+      <span id="statusText">Connecting...</span>
+    </div>
+
+    <!-- Test Button (temporary for testing) -->
+    <button id="testButton" style="position: absolute; bottom: 20px; left: 20px; padding: 12px 24px; background: #4caf50; color: white; border: none; border-radius: 4px; cursor: pointer; z-index: 30; display: none;">
+      Test Images
+    </button>
+  </div>
+
+  <script type="module">
+    import { LiveKitClient } from './src/livekit-client.js';
+    import { ImageScheduler } from './src/image-scheduler.js';
+
+    const ORCHESTRATOR_URL = 'http://localhost:3000';
+
+    class ExperienceApp {
+      constructor() {
+        // Initialize image scheduler
+        this.imageScheduler = new ImageScheduler({
+          containerA: document.getElementById('bufferA'),
+          containerB: document.getElementById('bufferB'),
+          captionEl: document.getElementById('caption'),
+          creditEl: document.getElementById('credit')
+        });
+
+        // Initialize LiveKit client
+        this.liveKitClient = new LiveKitClient({
+          orchestratorUrl: ORCHESTRATOR_URL,
+          kioskId: 'kiosk-001',
+          onAudioTrack: this.handleAudioTrack.bind(this),
+          onDataMessage: this.handleDataMessage.bind(this),
+          onConnectionStateChange: this.handleConnectionState.bind(this)
+        });
+
+        this.experienceStarted = false;
+      }
+
+      async start() {
+        try {
+          console.log('Starting experience...');
+
+          // Connect to LiveKit
+          await this.liveKitClient.connect();
+
+          // Hide loading overlay
+          document.getElementById('loadingOverlay').classList.add('hidden');
+          this.experienceStarted = true;
+
+          // Show test button (temporary)
+          const testBtn = document.getElementById('testButton');
+          testBtn.style.display = 'block';
+          testBtn.onclick = () => this.testImageSequence();
+
+          console.log('Experience started successfully');
+        } catch (error) {
+          console.error('Failed to start experience:', error);
+          this.showError('Connection failed. Returning to home...');
+
+          setTimeout(() => {
+            window.location.href = 'screensaver.html';
+          }, 3000);
+        }
+      }
+
+      handleAudioTrack(track) {
+        console.log('Audio track received');
+
+        // Get audio context for timing
+        const audioContext = this.liveKitClient.getAudioContext();
+        if (audioContext) {
+          this.imageScheduler.setAudioContext(audioContext);
+        }
+      }
+
+      handleDataMessage(message) {
+        console.log('Data message received:', message.type);
+
+        switch (message.type) {
+          case 'img_preload':
+            this.imageScheduler.preload(message);
+            break;
+
+          case 'img_show':
+            this.imageScheduler.scheduleShow(message);
+            break;
+
+          case 'end_of_stream':
+            this.handleExperienceEnd();
+            break;
+
+          default:
+            console.log('Unknown message type:', message);
+        }
+      }
+
+      handleConnectionState(state) {
+        const statusDot = document.getElementById('statusDot');
+        const statusText = document.getElementById('statusText');
+
+        statusDot.className = `status-dot ${state}`;
+
+        const stateText = state.charAt(0).toUpperCase() + state.slice(1);
+        statusText.textContent = stateText;
+
+        console.log('Connection state:', state);
+
+        if (state === 'error' || state === 'disconnected') {
+          if (this.experienceStarted) {
+            this.handleExperienceEnd();
+          }
+        }
+      }
+
+      // Test function to simulate image messages
+      async testImageSequence() {
+        console.log('Testing image sequence...');
+
+        const testImages = [
+          {
+            id: 'parthenon',
+            url: 'https://images.unsplash.com/photo-1555993539-1732b0258235?w=1920&h=1080&fit=crop',
+            caption: 'The Parthenon — Athens, 447 BC',
+            credit: 'Test Image'
+          },
+          {
+            id: 'acropolis',
+            url: 'https://images.unsplash.com/photo-1603565816030-6b389eeb23cb?w=1920&h=1080&fit=crop',
+            caption: 'The Acropolis of Athens',
+            credit: 'Test Image'
+          }
+        ];
+
+        // Preload first image
+        await this.imageScheduler.preload({
+          id: testImages[0].id,
+          cdn_url: testImages[0].url,
+          ttl_ms: 30000
+        });
+
+        // Show first image
+        setTimeout(() => {
+          this.imageScheduler.scheduleShow({
+            id: testImages[0].id,
+            playout_ts: performance.now(),
+            transition: 'crossfade',
+            duration_ms: 400,
+            caption: testImages[0].caption,
+            credit: testImages[0].credit
+          });
+        }, 500);
+
+        // Preload second image
+        await this.imageScheduler.preload({
+          id: testImages[1].id,
+          cdn_url: testImages[1].url,
+          ttl_ms: 30000
+        });
+
+        // Show second image after 3 seconds
+        setTimeout(() => {
+          this.imageScheduler.scheduleShow({
+            id: testImages[1].id,
+            playout_ts: performance.now(),
+            transition: 'crossfade',
+            duration_ms: 400,
+            caption: testImages[1].caption,
+            credit: testImages[1].credit
+          });
+        }, 3500);
+      }
+
+      handleExperienceEnd() {
+        console.log('Experience ended');
+
+        // Show thank you message
+        const caption = document.getElementById('caption');
+        const credit = document.getElementById('credit');
+
+        caption.textContent = 'Thank you for experiencing Ancient Greece!';
+        credit.textContent = 'Returning to home screen...';
+
+        // Disconnect from LiveKit
+        this.liveKitClient.disconnect();
+
+        // Return to screensaver after 5 seconds
+        setTimeout(() => {
+          window.location.href = 'screensaver.html';
+        }, 5000);
+      }
+
+      showError(message) {
+        const loadingText = document.querySelector('.loading-text');
+        if (loadingText) {
+          loadingText.textContent = message;
+          loadingText.style.color = '#f44336';
+        }
+      }
+    }
+
+    // Initialize and start experience
+    const app = new ExperienceApp();
+    app.start();
+  </script>
+</body>
+</html>
