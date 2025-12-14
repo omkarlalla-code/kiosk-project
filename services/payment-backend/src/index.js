@@ -13,12 +13,27 @@ require('dotenv').config();
 
 const express = require('express');
 const crypto = require('crypto');
+const Razorpay = require('razorpay');
 
 const app = express();
 const PORT = process.env.PORT || 3003;
 const PSP_PROVIDER = process.env.PSP_PROVIDER || 'mock';
 const PAYMENT_SIGN_SECRET = process.env.PAYMENT_SIGN_SECRET || 'dev-secret-key';
 const ORCHESTRATOR_URL = process.env.ORCHESTRATOR_URL || 'http://localhost:3000';
+
+// Razorpay configuration
+const RAZORPAY_KEY_ID = process.env.RAZORPAY_KEY_ID;
+const RAZORPAY_KEY_SECRET = process.env.RAZORPAY_KEY_SECRET;
+const RAZORPAY_WEBHOOK_SECRET = process.env.RAZORPAY_WEBHOOK_SECRET;
+
+let razorpayInstance = null;
+if (PSP_PROVIDER === 'razorpay' && RAZORPAY_KEY_ID && RAZORPAY_KEY_SECRET) {
+  razorpayInstance = new Razorpay({
+    key_id: RAZORPAY_KEY_ID,
+    key_secret: RAZORPAY_KEY_SECRET
+  });
+  console.log('Razorpay initialized');
+}
 
 app.use(express.json());
 
@@ -38,37 +53,88 @@ app.post('/create_session', async (req, res) => {
       return res.status(400).json({ error: 'amount and currency are required' });
     }
 
-    const payment_id = `pay_${crypto.randomBytes(8).toString('hex')}`;
-    const expires_at = Date.now() + 300000; // 5 minutes
+    if (PSP_PROVIDER === 'razorpay' && razorpayInstance) {
+      // Razorpay integration
+      const options = {
+        amount: amount, // Amount in paise
+        currency: currency,
+        receipt: `rcpt_${crypto.randomBytes(6).toString('hex')}`,
+        payment_capture: 1,
+        notes: {
+          context,
+          session_id,
+          kiosk_id
+        }
+      };
 
-    // Generate UPI URI and QR code (mock for now)
-    const upi_uri = `upi://pay?pa=merchant@upi&pn=Kiosk&am=${amount / 100}&cu=${currency}&tr=${payment_id}`;
-    const qr_base64 = generateMockQR(upi_uri);
+      const order = await razorpayInstance.orders.create(options);
 
-    // Store payment session
-    paymentSessions.set(payment_id, {
-      payment_id,
-      amount,
-      currency,
-      context,
-      session_id,
-      kiosk_id,
-      status: 'pending',
-      created_at: Date.now(),
-      expires_at,
-      upi_uri,
-    });
+      // Store payment session
+      paymentSessions.set(order.id, {
+        payment_id: order.id,
+        amount,
+        currency,
+        context,
+        session_id,
+        kiosk_id,
+        status: 'pending',
+        created_at: Date.now(),
+        expires_at: Date.now() + 300000, // 5 minutes
+        provider: 'razorpay',
+        order_id: order.id
+      });
 
-    console.log(`Created payment session ${payment_id} for ${amount} ${currency}`);
+      console.log(`Created Razorpay order ${order.id} for ${amount} ${currency}`);
 
-    res.json({
-      payment_id,
-      upi_uri,
-      qr_base64,
-      amount,
-      currency,
-      expires_at,
-    });
+      // Generate UPI payment link
+      const upi_uri = `upi://pay?pa=${RAZORPAY_KEY_ID}@razorpay&pn=Kiosk&am=${amount / 100}&cu=${currency}&tr=${order.id}`;
+      const qr_base64 = generateMockQR(upi_uri); // In production, use actual QR library
+
+      res.json({
+        payment_id: order.id,
+        upi_uri,
+        qr_base64,
+        amount,
+        currency,
+        expires_at: Date.now() + 300000,
+        provider: 'razorpay'
+      });
+    } else {
+      // Mock payment gateway
+      const payment_id = `pay_${crypto.randomBytes(8).toString('hex')}`;
+      const expires_at = Date.now() + 300000; // 5 minutes
+
+      // Generate UPI URI and QR code (mock)
+      const upi_uri = `upi://pay?pa=merchant@upi&pn=Kiosk&am=${amount / 100}&cu=${currency}&tr=${payment_id}`;
+      const qr_base64 = generateMockQR(upi_uri);
+
+      // Store payment session
+      paymentSessions.set(payment_id, {
+        payment_id,
+        amount,
+        currency,
+        context,
+        session_id,
+        kiosk_id,
+        status: 'pending',
+        created_at: Date.now(),
+        expires_at,
+        upi_uri,
+        provider: 'mock'
+      });
+
+      console.log(`Created mock payment session ${payment_id} for ${amount} ${currency}`);
+
+      res.json({
+        payment_id,
+        upi_uri,
+        qr_base64,
+        amount,
+        currency,
+        expires_at,
+        provider: 'mock'
+      });
+    }
   } catch (error) {
     console.error('Error creating payment session:', error);
     res.status(500).json({ error: 'Failed to create payment session' });
@@ -145,9 +211,89 @@ app.post('/webhooks/mock', async (req, res) => {
 
 // POST /webhooks/razorpay - Razorpay webhook handler
 app.post('/webhooks/razorpay', async (req, res) => {
-  console.log('Received Razorpay webhook:', req.body);
-  // TODO: Implement Razorpay signature verification
-  res.json({ received: true });
+  try {
+    console.log('Received Razorpay webhook');
+
+    // Verify webhook signature
+    const webhookSignature = req.headers['x-razorpay-signature'];
+
+    if (RAZORPAY_WEBHOOK_SECRET) {
+      const expectedSignature = crypto
+        .createHmac('sha256', RAZORPAY_WEBHOOK_SECRET)
+        .update(JSON.stringify(req.body))
+        .digest('hex');
+
+      if (webhookSignature !== expectedSignature) {
+        console.error('Invalid Razorpay webhook signature');
+        return res.status(400).json({ error: 'Invalid signature' });
+      }
+    }
+
+    const event = req.body.event;
+    const payload = req.body.payload;
+
+    console.log(`Razorpay event: ${event}`);
+
+    // Handle payment success
+    if (event === 'payment.captured' || event === 'payment.authorized') {
+      const payment = payload.payment.entity;
+      const order_id = payment.order_id;
+
+      const session = paymentSessions.get(order_id);
+
+      if (!session) {
+        console.error(`Payment session not found for order ${order_id}`);
+        return res.status(404).json({ error: 'Payment session not found' });
+      }
+
+      // Update session status
+      session.status = 'success';
+      session.updated_at = Date.now();
+      session.txn_id = payment.id;
+      session.razorpay_payment_id = payment.id;
+
+      // Sign payment confirmation
+      const signature = signPaymentConfirm(order_id, payment.id, 'success');
+
+      // Create confirmation message
+      const confirmMessage = {
+        type: 'payment_confirm',
+        payment_id: order_id,
+        status: 'success',
+        txn_id: payment.id,
+        amount: session.amount,
+        signature,
+      };
+
+      console.log(`Razorpay payment confirmed: ${order_id}, txn: ${payment.id}`);
+
+      // TODO: Send to orchestrator to forward to kiosk via DataChannel
+      session.confirmation = confirmMessage;
+
+      res.json({ received: true, status: 'success' });
+    } else if (event === 'payment.failed') {
+      const payment = payload.payment.entity;
+      const order_id = payment.order_id;
+
+      const session = paymentSessions.get(order_id);
+
+      if (session) {
+        session.status = 'failed';
+        session.updated_at = Date.now();
+        session.error = payment.error_description;
+
+        console.log(`Razorpay payment failed: ${order_id}`);
+      }
+
+      res.json({ received: true, status: 'failed' });
+    } else {
+      console.log(`Unhandled Razorpay event: ${event}`);
+      res.json({ received: true });
+    }
+  } catch (error) {
+    console.error('Error processing Razorpay webhook:', error);
+    res.status(500).json({ error: 'Failed to process webhook' });
+  }
 });
 
 // POST /webhooks/cashfree - Cashfree webhook handler
