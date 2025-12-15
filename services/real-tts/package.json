@@ -1,0 +1,21 @@
+{
+  "name": "kiosk-real-tts",
+  "version": "0.1.0",
+  "description": "Real TTS service with streaming audio for kiosk project",
+  "main": "src/index.js",
+  "scripts": {
+    "start": "node src/index.js",
+    "dev": "nodemon src/index.js"
+  },
+  "keywords": ["kiosk", "tts", "streaming", "espeak"],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "express": "^4.18.2",
+    "ws": "^8.14.2",
+    "dotenv": "^16.3.1"
+  },
+  "devDependencies": {
+    "nodemon": "^3.0.1"
+  }
+}

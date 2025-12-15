@@ -1,0 +1,932 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>LiveKit Audio Demo - Greek Civilization</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: #000;
+      color: #fff;
+      overflow: hidden;
+    }
+
+    #container {
+      position: relative;
+      width: 100vw;
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    #imageDisplay {
+      position: relative;
+      flex: 1;
+      background: #000;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+    }
+
+    #currentImage {
+      max-width: 100%;
+      max-height: 100%;
+      object-fit: contain;
+      opacity: 0;
+      transition: opacity 0.4s ease-in-out;
+    }
+
+    #currentImage.visible {
+      opacity: 1;
+    }
+
+    #caption {
+      position: absolute;
+      bottom: 60px;
+      left: 0;
+      right: 0;
+      background: linear-gradient(to top, rgba(0,0,0,0.8), transparent);
+      padding: 40px 60px 20px;
+      opacity: 0;
+      transition: opacity 0.4s ease-in-out;
+    }
+
+    #caption.visible {
+      opacity: 1;
+    }
+
+    #captionText {
+      font-size: 32px;
+      font-weight: 600;
+      margin-bottom: 8px;
+      text-shadow: 2px 2px 4px rgba(0,0,0,0.8);
+    }
+
+    #captionCredit {
+      font-size: 16px;
+      opacity: 0.7;
+      text-shadow: 1px 1px 2px rgba(0,0,0,0.8);
+    }
+
+    #controlPanel {
+      background: rgba(20, 20, 20, 0.95);
+      padding: 20px 40px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      border-top: 1px solid rgba(255,255,255,0.1);
+    }
+
+    #controls {
+      display: flex;
+      gap: 15px;
+      align-items: center;
+    }
+
+    button {
+      background: #4CAF50;
+      color: white;
+      border: none;
+      padding: 12px 24px;
+      font-size: 16px;
+      border-radius: 6px;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      font-weight: 600;
+    }
+
+    button:hover {
+      background: #45a049;
+      transform: translateY(-2px);
+      box-shadow: 0 4px 8px rgba(76, 175, 80, 0.3);
+    }
+
+    button:disabled {
+      background: #555;
+      cursor: not-allowed;
+      transform: none;
+      box-shadow: none;
+    }
+
+    button.danger {
+      background: #f44336;
+    }
+
+    button.danger:hover {
+      background: #da190b;
+    }
+
+    #status {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      flex: 1;
+      max-width: 600px;
+      margin-left: 20px;
+    }
+
+    #statusText {
+      font-size: 14px;
+      color: #aaa;
+    }
+
+    #statusText.connected {
+      color: #4CAF50;
+    }
+
+    #statusText.error {
+      color: #f44336;
+    }
+
+    #progressBar {
+      width: 100%;
+      height: 4px;
+      background: rgba(255,255,255,0.1);
+      border-radius: 2px;
+      overflow: hidden;
+    }
+
+    #progressFill {
+      height: 100%;
+      background: #4CAF50;
+      width: 0%;
+      transition: width 0.3s ease;
+    }
+
+    #stats {
+      position: fixed;
+      top: 20px;
+      left: 20px;
+      background: rgba(20, 20, 20, 0.9);
+      padding: 15px;
+      border-radius: 8px;
+      font-size: 14px;
+      min-width: 300px;
+      border: 1px solid rgba(255,255,255,0.1);
+    }
+
+    #stats h3 {
+      margin-bottom: 10px;
+      font-size: 16px;
+      color: #4CAF50;
+    }
+
+    #stats .stat-row {
+      display: flex;
+      justify-content: space-between;
+      padding: 4px 0;
+      border-bottom: 1px solid rgba(255,255,255,0.05);
+    }
+
+    #stats .stat-label {
+      color: #aaa;
+    }
+
+    #stats .stat-value {
+      color: #fff;
+      font-weight: 600;
+    }
+
+    .livekit-badge {
+      display: inline-block;
+      padding: 4px 12px;
+      background: rgba(76, 175, 80, 0.2);
+      border: 1px solid rgba(76, 175, 80, 0.4);
+      border-radius: 4px;
+      font-size: 12px;
+      font-weight: 600;
+      color: #4CAF50;
+    }
+
+    #logsPanel {
+      position: fixed;
+      top: 20px;
+      right: 20px;
+      width: 400px;
+      max-height: 80vh;
+      background: rgba(20, 20, 20, 0.95);
+      border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 8px;
+      padding: 15px;
+      font-family: 'Courier New', monospace;
+      font-size: 12px;
+      overflow-y: auto;
+      display: none;
+    }
+
+    #logsPanel.visible {
+      display: block;
+    }
+
+    .log-entry {
+      padding: 4px 0;
+      border-bottom: 1px solid rgba(255,255,255,0.05);
+    }
+
+    .log-timestamp {
+      color: #888;
+      margin-right: 8px;
+    }
+
+    .log-info { color: #4CAF50; }
+    .log-warn { color: #ff9800; }
+    .log-error { color: #f44336; }
+
+    /* STT Styles */
+    #micBtn {
+      background: #2196F3;
+      position: relative;
+    }
+
+    #micBtn:hover {
+      background: #1976D2;
+    }
+
+    #micBtn.listening {
+      background: #f44336;
+      animation: pulse 1.5s infinite;
+    }
+
+    @keyframes pulse {
+      0%, 100% { box-shadow: 0 0 0 0 rgba(244, 67, 54, 0.7); }
+      50% { box-shadow: 0 0 0 10px rgba(244, 67, 54, 0); }
+    }
+
+    #transcriptPanel {
+      position: fixed;
+      bottom: 100px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: rgba(20, 20, 20, 0.95);
+      border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 8px;
+      padding: 20px;
+      min-width: 600px;
+      max-width: 800px;
+      display: none;
+    }
+
+    #transcriptPanel.visible {
+      display: block;
+    }
+
+    #transcriptPanel h3 {
+      margin-bottom: 10px;
+      font-size: 16px;
+      color: #2196F3;
+    }
+
+    #transcriptText {
+      font-size: 18px;
+      line-height: 1.6;
+      min-height: 60px;
+      color: #fff;
+      padding: 10px;
+      background: rgba(255,255,255,0.05);
+      border-radius: 4px;
+    }
+
+    #transcriptInterim {
+      color: #888;
+      font-style: italic;
+    }
+
+    .stt-status {
+      display: inline-block;
+      padding: 2px 8px;
+      border-radius: 3px;
+      font-size: 11px;
+      font-weight: 600;
+      margin-left: 8px;
+    }
+
+    .stt-status.listening {
+      background: rgba(244, 67, 54, 0.2);
+      color: #f44336;
+    }
+
+    .stt-status.idle {
+      background: rgba(128, 128, 128, 0.2);
+      color: #888;
+    }
+  </style>
+</head>
+<body>
+  <div id="container">
+    <div id="imageDisplay">
+      <img id="currentImage" alt="Greek Civilization">
+      <div id="caption">
+        <div id="captionText"></div>
+        <div id="captionCredit"></div>
+      </div>
+    </div>
+
+    <div id="controlPanel">
+      <div id="controls">
+        <button id="startBtn">🎬 Start LiveKit Experience</button>
+        <button id="stopBtn" disabled class="danger">⏹️ Stop</button>
+        <button id="micBtn">🎤 Start Listening</button>
+        <button id="toggleLogsBtn">📋 Logs</button>
+      </div>
+      <div id="status">
+        <div id="statusText">Ready - Will use LiveKit for audio</div>
+        <div id="progressBar">
+          <div id="progressFill"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div id="stats">
+    <h3>📊 LiveKit Demo Status</h3>
+    <div class="stat-row">
+      <span class="stat-label">Connection:</span>
+      <span class="stat-value" id="connectionStatus">Disconnected</span>
+    </div>
+    <div class="stat-row">
+      <span class="stat-label">Room:</span>
+      <span class="stat-value" id="roomName">-</span>
+    </div>
+    <div class="stat-row">
+      <span class="stat-label">Audio Track:</span>
+      <span class="stat-value" id="audioTrackStatus">None</span>
+    </div>
+    <div class="stat-row">
+      <span class="stat-label">Participants:</span>
+      <span class="stat-value" id="participantCount">0</span>
+    </div>
+    <div class="stat-row">
+      <span class="stat-label">Images:</span>
+      <span class="stat-value" id="imagesValue">0/2</span>
+    </div>
+    <div class="stat-row">
+      <span class="stat-label">STT:</span>
+      <span class="stat-value" id="sttStatus">
+        <span class="stt-status idle">Idle</span>
+      </span>
+    </div>
+    <div style="margin-top: 10px; padding-top: 10px; border-top: 1px solid rgba(255,255,255,0.1);">
+      <span class="livekit-badge">✓ LiveKit WebRTC</span>
+    </div>
+  </div>
+
+  <div id="transcriptPanel">
+    <h3>🎤 Live Transcription</h3>
+    <div id="transcriptText">
+      <span id="transcriptFinal">Say something...</span>
+      <span id="transcriptInterim"></span>
+    </div>
+  </div>
+
+  <div id="logsPanel">
+    <h3>Event Log</h3>
+    <div id="logEntries"></div>
+  </div>
+
+  <script src="/livekit-client.umd.js"></script>
+
+  <script>
+    const ORCHESTRATOR_URL = 'http://localhost:3000';
+    const KIOSK_ID = 'livekit-demo-001';
+
+    // Greek civilization narration script
+    const GREEK_SCRIPT = {
+      text: `Welcome to ancient Greece, the cradle of Western civilization.
+Before you stands the Parthenon, the most iconic symbol of ancient Athens.
+Built in 447 BC, this magnificent temple was dedicated to the goddess Athena.
+The Acropolis of Athens rises majestically above the city.
+Here, democracy was born and philosophy flourished.
+Greek civilization gave us mathematics, theater, and the Olympic Games.
+Their influence echoes through the millennia.`,
+      images: [
+        {
+          id: 'parthenon',
+          // Using placeholder images that work from file://
+          url: 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" width="1920" height="1080"><rect fill="%23222" width="1920" height="1080"/><text x="50%" y="50%" fill="white" font-size="48" text-anchor="middle" font-family="Arial">🏛️ The Parthenon</text></svg>',
+          showAtWord: 10,
+          caption: 'The Parthenon — Athens, 447 BC',
+          credit: 'Demo Image'
+        },
+        {
+          id: 'acropolis',
+          url: 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" width="1920" height="1080"><rect fill="%23333" width="1920" height="1080"/><text x="50%" y="50%" fill="white" font-size="48" text-anchor="middle" font-family="Arial">🏛️ The Acropolis</text></svg>',
+          showAtWord: 30,
+          caption: 'The Acropolis of Athens',
+          credit: 'Demo Image'
+        }
+      ]
+    };
+
+    let state = {
+      room: null,
+      sessionId: null,
+      isNarrating: false,
+      wordCount: 0,
+      imagesShown: 0,
+      audioTrack: null,
+      ttsUtterance: null,
+      recognition: null,
+      isListening: false,
+      transcript: ''
+    };
+
+    const startBtn = document.getElementById('startBtn');
+    const stopBtn = document.getElementById('stopBtn');
+    const micBtn = document.getElementById('micBtn');
+    const toggleLogsBtn = document.getElementById('toggleLogsBtn');
+    const statusText = document.getElementById('statusText');
+    const progressFill = document.getElementById('progressFill');
+    const currentImage = document.getElementById('currentImage');
+    const caption = document.getElementById('caption');
+    const captionText = document.getElementById('captionText');
+    const captionCredit = document.getElementById('captionCredit');
+    const logsPanel = document.getElementById('logsPanel');
+    const logEntries = document.getElementById('logEntries');
+    const transcriptPanel = document.getElementById('transcriptPanel');
+    const transcriptFinal = document.getElementById('transcriptFinal');
+    const transcriptInterim = document.getElementById('transcriptInterim');
+    const sttStatus = document.getElementById('sttStatus');
+
+    function log(message, type = 'info') {
+      const timestamp = new Date().toLocaleTimeString();
+      const entry = document.createElement('div');
+      entry.className = `log-entry log-${type}`;
+      entry.innerHTML = `<span class="log-timestamp">${timestamp}</span>${message}`;
+      logEntries.appendChild(entry);
+      logEntries.scrollTop = logEntries.scrollHeight;
+      console.log(`[${type.toUpperCase()}] ${message}`);
+    }
+
+    function updateStatus(text, className = '') {
+      statusText.textContent = text;
+      statusText.className = className;
+    }
+
+    function updateStats() {
+      document.getElementById('imagesValue').textContent = `${state.imagesShown}/2`;
+      if (state.room) {
+        document.getElementById('connectionStatus').textContent =
+          state.room.state === 'connected' ? 'Connected ✓' : 'Connecting...';
+        document.getElementById('roomName').textContent =
+          state.room.name || '-';
+        const participantCount = state.room.participants ? state.room.participants.size + 1 : 1;
+        document.getElementById('participantCount').textContent = participantCount;
+        document.getElementById('audioTrackStatus').textContent =
+          state.audioTrack ? 'Publishing ✓' : 'None';
+      }
+    }
+
+    function showImage(imageData) {
+      log(`🖼️ Showing: ${imageData.id}`);
+      currentImage.classList.remove('visible');
+
+      setTimeout(() => {
+        currentImage.src = imageData.url;
+        captionText.textContent = imageData.caption;
+        captionCredit.textContent = imageData.credit;
+
+        setTimeout(() => {
+          currentImage.classList.add('visible');
+          caption.classList.add('visible');
+          state.imagesShown++;
+          updateStats();
+        }, 50);
+      }, 400);
+    }
+
+    async function connectToLiveKit() {
+      try {
+        updateStatus('Creating LiveKit session...');
+        progressFill.style.width = '20%';
+
+        // Create session with orchestrator
+        const response = await fetch(`${ORCHESTRATOR_URL}/start_session`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ kiosk_id: KIOSK_ID })
+        });
+
+        if (!response.ok) throw new Error('Failed to create session');
+
+        const { session_id, token, livekit_url, room_name } = await response.json();
+        state.sessionId = session_id;
+
+        log(`✅ Session created: ${session_id}`);
+        log(`🔗 LiveKit URL: ${livekit_url}`);
+        log(`🏠 Room: ${room_name}`);
+        progressFill.style.width = '40%';
+
+        // Connect to LiveKit room
+        updateStatus('Connecting to LiveKit room...');
+        const room = new LivekitClient.Room({
+          adaptiveStream: true,
+          dynacast: true,
+        });
+        state.room = room;
+
+        // Room event handlers
+        room.on(LivekitClient.RoomEvent.Connected, () => {
+          log('✅ Connected to LiveKit room');
+          updateStatus('Connected to LiveKit ✓', 'connected');
+          updateStats();
+        });
+
+        room.on(LivekitClient.RoomEvent.ParticipantConnected, (participant) => {
+          log(`👤 Participant joined: ${participant.identity}`);
+          updateStats();
+        });
+
+        room.on(LivekitClient.RoomEvent.TrackPublished, (publication, participant) => {
+          log(`📢 Track published: ${publication.kind} by ${participant.identity}`);
+        });
+
+        room.on(LivekitClient.RoomEvent.TrackSubscribed, (track, publication, participant) => {
+          log(`📥 Subscribed to ${track.kind} from ${participant.identity}`);
+        });
+
+        room.on(LivekitClient.RoomEvent.AudioPlaybackStatusChanged, () => {
+          log('🔊 Audio playback status changed');
+        });
+
+        // Connect
+        await room.connect(livekit_url, token);
+        progressFill.style.width = '60%';
+
+        log('✅ LiveKit connection established');
+        return room;
+
+      } catch (error) {
+        log(`❌ LiveKit error: ${error.message}`, 'error');
+        updateStatus('LiveKit connection failed', 'error');
+        throw error;
+      }
+    }
+
+    async function publishAudioToLiveKit() {
+      try {
+        updateStatus('Setting up audio track...');
+        log('🎤 Creating audio track for LiveKit');
+
+        // Create an audio context and stream
+        const audioContext = new AudioContext({ sampleRate: 48000 });
+        const dest = audioContext.createMediaStreamDestination();
+
+        // Create TTS synthesizer
+        const synth = window.speechSynthesis;
+        const utterance = new SpeechSynthesisUtterance(GREEK_SCRIPT.text);
+        state.ttsUtterance = utterance;
+
+        // Configure TTS
+        utterance.rate = 0.9;
+        utterance.pitch = 1.0;
+        utterance.volume = 1.0;
+
+        // Get available voices
+        let voices = synth.getVoices();
+        if (voices.length === 0) {
+          // Wait for voices to load
+          await new Promise(resolve => {
+            synth.onvoiceschanged = () => {
+              voices = synth.getVoices();
+              resolve();
+            };
+          });
+        }
+
+        // Prefer English voice
+        const enVoice = voices.find(v => v.lang.startsWith('en')) || voices[0];
+        if (enVoice) {
+          utterance.voice = enVoice;
+          log(`🗣️ Using voice: ${enVoice.name}`);
+        }
+
+        // Handle image transitions based on word boundaries
+        let wordsSoFar = 0;
+        const words = GREEK_SCRIPT.text.split(/\s+/);
+
+        utterance.onboundary = (event) => {
+          if (event.name === 'word') {
+            wordsSoFar++;
+            state.wordCount = wordsSoFar;
+
+            // Check for image transitions
+            GREEK_SCRIPT.images.forEach(img => {
+              if (wordsSoFar === img.showAtWord) {
+                showImage(img);
+              }
+            });
+
+            // Update progress
+            const progress = 60 + (wordsSoFar / words.length) * 35;
+            progressFill.style.width = `${Math.min(progress, 95)}%`;
+          }
+        };
+
+        utterance.onstart = () => {
+          log('🎵 Narration started');
+          updateStatus('🎙️ Narrating through LiveKit...', 'connected');
+          state.isNarrating = true;
+        };
+
+        utterance.onend = () => {
+          log('✅ Narration complete');
+          updateStatus('Experience complete! 🎉', 'connected');
+          progressFill.style.width = '100%';
+          state.isNarrating = false;
+        };
+
+        utterance.onerror = (error) => {
+          log(`❌ TTS error: ${error.error}`, 'error');
+        };
+
+        // Create LocalAudioTrack from MediaStream
+        // Note: This is a workaround since we can't directly capture TTS audio
+        // In production, you'd use a proper audio source
+        const stream = await navigator.mediaDevices.getUserMedia({
+          audio: {
+            echoCancellation: false,
+            noiseSuppression: false,
+            autoGainControl: false
+          }
+        });
+
+        const track = new LivekitClient.LocalAudioTrack(stream.getAudioTracks()[0]);
+        state.audioTrack = track;
+
+        // Publish track to LiveKit
+        await state.room.localParticipant.publishTrack(track, {
+          name: 'narration',
+          source: LivekitClient.Track.Source.Microphone
+        });
+
+        log('✅ Audio track published to LiveKit');
+        updateStats();
+
+        // Start TTS
+        synth.speak(utterance);
+
+        progressFill.style.width = '80%';
+
+      } catch (error) {
+        log(`❌ Audio setup error: ${error.message}`, 'error');
+        updateStatus('Audio setup failed', 'error');
+      }
+    }
+
+    async function startExperience() {
+      try {
+        startBtn.disabled = true;
+        log('🎬 Starting LiveKit Experience');
+        log('━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+
+        // Connect to LiveKit
+        await connectToLiveKit();
+
+        // Publish audio
+        await publishAudioToLiveKit();
+
+        // Auto-start STT (mic always on during session)
+        log('🎤 Auto-starting STT (mic always on)');
+        if (!state.isListening) {
+          toggleSTT();
+        }
+
+        stopBtn.disabled = false;
+
+      } catch (error) {
+        log(`❌ Failed to start: ${error.message}`, 'error');
+        startBtn.disabled = false;
+        progressFill.style.width = '0%';
+      }
+    }
+
+    // ========== Speech-to-Text (STT) Functions ==========
+
+    function initializeSTT() {
+      // Check if Web Speech API is supported
+      const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+
+      if (!SpeechRecognition) {
+        log('❌ Speech recognition not supported in this browser', 'error');
+        micBtn.disabled = true;
+        micBtn.textContent = '🎤 STT Not Supported';
+        return null;
+      }
+
+      const recognition = new SpeechRecognition();
+      recognition.continuous = true;
+      recognition.interimResults = true;
+      recognition.lang = 'en-US';
+      recognition.maxAlternatives = 1;
+
+      recognition.onstart = () => {
+        state.isListening = true;
+        micBtn.classList.add('listening');
+        micBtn.textContent = '🔴 Stop Listening';
+        transcriptPanel.classList.add('visible');
+        sttStatus.innerHTML = '<span class="stt-status listening">● Listening</span>';
+        log('🎤 STT started - Listening...', 'info');
+      };
+
+      recognition.onresult = (event) => {
+        let interimTranscript = '';
+        let finalTranscript = '';
+
+        for (let i = event.resultIndex; i < event.results.length; i++) {
+          const transcript = event.results[i][0].transcript;
+          if (event.results[i].isFinal) {
+            finalTranscript += transcript + ' ';
+          } else {
+            interimTranscript += transcript;
+          }
+        }
+
+        if (finalTranscript) {
+          const trimmedFinal = finalTranscript.trim();
+          state.transcript += finalTranscript;
+          transcriptFinal.textContent = state.transcript;
+          log(`📝 Transcribed: "${trimmedFinal}"`, 'info');
+
+          // Send to LLM for conversation
+          if (state.sessionId && trimmedFinal.length > 0) {
+            sendToLLM(trimmedFinal);
+          }
+        }
+
+        transcriptInterim.textContent = interimTranscript;
+      };
+
+      recognition.onerror = (event) => {
+        log(`❌ STT error: ${event.error}`, 'error');
+        if (event.error === 'no-speech') {
+          log('💭 No speech detected, still listening...', 'warn');
+        }
+      };
+
+      recognition.onend = () => {
+        if (state.isListening) {
+          // Auto-restart if still in listening mode
+          recognition.start();
+        } else {
+          micBtn.classList.remove('listening');
+          micBtn.textContent = '🎤 Start Listening';
+          sttStatus.innerHTML = '<span class="stt-status idle">Idle</span>';
+          log('🎤 STT stopped', 'info');
+        }
+      };
+
+      return recognition;
+    }
+
+    function toggleSTT() {
+      if (!state.recognition) {
+        state.recognition = initializeSTT();
+        if (!state.recognition) return;
+      }
+
+      if (state.isListening) {
+        // Stop listening
+        state.isListening = false;
+        state.recognition.stop();
+        transcriptPanel.classList.remove('visible');
+      } else {
+        // Start listening
+        try {
+          state.recognition.start();
+        } catch (error) {
+          log(`❌ Failed to start STT: ${error.message}`, 'error');
+        }
+      }
+    }
+
+    function clearTranscript() {
+      state.transcript = '';
+      transcriptFinal.textContent = 'Say something...';
+      transcriptInterim.textContent = '';
+    }
+
+    async function sendToLLM(userMessage) {
+      try {
+        log(`💬 Sending to LLM: "${userMessage}"`, 'info');
+
+        const response = await fetch(`${ORCHESTRATOR_URL}/converse`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            session_id: state.sessionId,
+            message: userMessage
+          })
+        });
+
+        if (!response.ok) {
+          throw new Error(`Conversation failed: ${response.statusText}`);
+        }
+
+        const data = await response.json();
+        log(`🤖 Assistant: "${data.assistant_response}"`, 'info');
+
+        // The orchestrator will handle TTS streaming automatically
+        // Audio will come through LiveKit
+
+      } catch (error) {
+        log(`❌ LLM error: ${error.message}`, 'error');
+      }
+    }
+
+    async function stopExperience() {
+      try {
+        stopBtn.disabled = true;
+        log('⏹️ Stopping experience');
+
+        // Stop STT if running
+        if (state.isListening) {
+          state.isListening = false;
+          if (state.recognition) {
+            state.recognition.stop();
+          }
+          transcriptPanel.classList.remove('visible');
+        }
+
+        // Stop TTS
+        if (state.ttsUtterance) {
+          window.speechSynthesis.cancel();
+        }
+
+        // Unpublish tracks
+        if (state.audioTrack) {
+          await state.room.localParticipant.unpublishTrack(state.audioTrack);
+          state.audioTrack.stop();
+          state.audioTrack = null;
+        }
+
+        // Disconnect from LiveKit
+        if (state.room) {
+          state.room.disconnect();
+          state.room = null;
+        }
+
+        // End session
+        if (state.sessionId) {
+          await fetch(`${ORCHESTRATOR_URL}/session/${state.sessionId}`, {
+            method: 'DELETE'
+          });
+        }
+
+        // Reset state
+        state = {
+          room: null,
+          sessionId: null,
+          isNarrating: false,
+          wordCount: 0,
+          imagesShown: 0,
+          audioTrack: null,
+          ttsUtterance: null
+        };
+
+        updateStats();
+        updateStatus('Session ended');
+        progressFill.style.width = '0%';
+        startBtn.disabled = false;
+
+        currentImage.classList.remove('visible');
+        caption.classList.remove('visible');
+
+        log('✅ Experience stopped');
+
+      } catch (error) {
+        log(`❌ Stop error: ${error.message}`, 'error');
+      }
+    }
+
+    startBtn.addEventListener('click', startExperience);
+    stopBtn.addEventListener('click', stopExperience);
+    micBtn.addEventListener('click', toggleSTT);
+    toggleLogsBtn.addEventListener('click', () => {
+      logsPanel.classList.toggle('visible');
+    });
+
+    // Initialize
+    log('🏛️ LiveKit Greek Civilization Demo + STT');
+    log('📡 This demo uses LiveKit WebRTC');
+    log('🎙️ Audio will be published through LiveKit');
+    log('🎤 Speech-to-Text now available!');
+    log('━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+    log('');
+    log('✓ Uses browser TTS for narration');
+    log('✓ Publishes audio track to LiveKit');
+    log('✓ Real LiveKit WebRTC connection');
+    log('✓ Images synchronized with speech');
+    log('✓ Web Speech API for STT');
+    log('');
+    log('Click "Start" for narration, "🎤 Start Listening" for STT! 🎬');
+  </script>
+</body>
+</html>

@@ -1,0 +1,56 @@
+apiVersion: serving.knative.dev/v1
+kind: Service
+metadata:
+  name: kiosk-orchestrator
+  annotations:
+    run.googleapis.com/ingress: all
+spec:
+  template:
+    metadata:
+      annotations:
+        # Scale to zero when idle (min instances = 0)
+        autoscaling.knative.dev/minScale: "0"
+        # Max instances for cost control
+        autoscaling.knative.dev/maxScale: "10"
+        # CPU allocation (only allocate CPU during request processing)
+        run.googleapis.com/cpu-throttling: "true"
+        # Startup CPU boost for faster cold starts
+        run.googleapis.com/startup-cpu-boost: "true"
+    spec:
+      containerConcurrency: 80
+      timeoutSeconds: 300
+      containers:
+      - image: gcr.io/PROJECT_ID/kiosk-orchestrator:latest
+        ports:
+        - name: http1
+          containerPort: 3000
+        env:
+        - name: PORT
+          value: "3000"
+        - name: LIVEKIT_API_KEY
+          valueFrom:
+            secretKeyRef:
+              name: livekit-credentials
+              key: api_key
+        - name: LIVEKIT_API_SECRET
+          valueFrom:
+            secretKeyRef:
+              name: livekit-credentials
+              key: api_secret
+        - name: LIVEKIT_URL
+          valueFrom:
+            secretKeyRef:
+              name: livekit-credentials
+              key: url
+        - name: TTS_SERVICE_URL
+          value: "TTS_SERVICE_CLOUD_RUN_URL"
+        - name: IMAGE_SCREENER_URL
+          value: "IMAGE_SCREENER_CLOUD_RUN_URL"
+        - name: SESSION_TIMEOUT_MS
+          value: "600000"  # 10 minutes
+        - name: SESSION_CLEANUP_INTERVAL_MS
+          value: "60000"   # 1 minute
+        resources:
+          limits:
+            cpu: "1000m"
+            memory: "512Mi"

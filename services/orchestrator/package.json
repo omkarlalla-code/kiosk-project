@@ -8,16 +8,26 @@
     "dev": "nodemon src/index.js",
     "test": "jest"
   },
-  "keywords": ["kiosk", "orchestrator", "livekit", "webrtc"],
+  "keywords": [
+    "kiosk",
+    "orchestrator",
+    "livekit",
+    "webrtc"
+  ],
   "author": "",
   "license": "MIT",
   "dependencies": {
+    "axios": "^1.13.2",
+    "cors": "^2.8.5",
+    "dotenv": "^16.6.1",
     "express": "^4.18.2",
+    "livekit-client": "^2.16.1",
     "livekit-server-sdk": "^2.0.0",
+    "opusscript": "^0.1.1",
     "ws": "^8.14.0"
   },
   "devDependencies": {
-    "nodemon": "^3.0.1",
-    "jest": "^29.7.0"
+    "jest": "^29.7.0",
+    "nodemon": "^3.0.1"
   }
 }

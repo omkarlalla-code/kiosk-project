@@ -1,0 +1,937 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Greek Civilization Kiosk - Full Demo with Audio</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: #000;
+      color: #fff;
+      overflow: hidden;
+    }
+
+    #container {
+      position: relative;
+      width: 100vw;
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* Main image display */
+    #imageDisplay {
+      position: relative;
+      flex: 1;
+      background: #000;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+    }
+
+    #currentImage {
+      max-width: 100%;
+      max-height: 100%;
+      object-fit: contain;
+      opacity: 0;
+      transition: opacity 0.4s ease-in-out;
+    }
+
+    #currentImage.visible {
+      opacity: 1;
+    }
+
+    /* Audio visualizer */
+    #audioVisualizer {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      opacity: 0.3;
+      pointer-events: none;
+    }
+
+    /* Image caption overlay */
+    #caption {
+      position: absolute;
+      bottom: 60px;
+      left: 0;
+      right: 0;
+      background: linear-gradient(to top, rgba(0,0,0,0.8), transparent);
+      padding: 40px 60px 20px;
+      opacity: 0;
+      transition: opacity 0.4s ease-in-out;
+    }
+
+    #caption.visible {
+      opacity: 1;
+    }
+
+    #captionText {
+      font-size: 32px;
+      font-weight: 600;
+      margin-bottom: 8px;
+      text-shadow: 2px 2px 4px rgba(0,0,0,0.8);
+    }
+
+    #captionCredit {
+      font-size: 16px;
+      opacity: 0.7;
+      text-shadow: 1px 1px 2px rgba(0,0,0,0.8);
+    }
+
+    /* Control panel at bottom */
+    #controlPanel {
+      background: rgba(20, 20, 20, 0.95);
+      padding: 20px 40px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      border-top: 1px solid rgba(255,255,255,0.1);
+    }
+
+    #controls {
+      display: flex;
+      gap: 15px;
+      align-items: center;
+    }
+
+    button {
+      background: #4CAF50;
+      color: white;
+      border: none;
+      padding: 12px 24px;
+      font-size: 16px;
+      border-radius: 6px;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      font-weight: 600;
+    }
+
+    button:hover {
+      background: #45a049;
+      transform: translateY(-2px);
+      box-shadow: 0 4px 8px rgba(76, 175, 80, 0.3);
+    }
+
+    button:disabled {
+      background: #555;
+      cursor: not-allowed;
+      transform: none;
+      box-shadow: none;
+    }
+
+    button.danger {
+      background: #f44336;
+    }
+
+    button.danger:hover {
+      background: #da190b;
+    }
+
+    /* Volume control */
+    #volumeControl {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-left: 20px;
+    }
+
+    #volumeSlider {
+      width: 100px;
+      cursor: pointer;
+    }
+
+    #volumeIcon {
+      font-size: 20px;
+    }
+
+    #status {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      flex: 1;
+      max-width: 600px;
+      margin-left: 20px;
+    }
+
+    #statusText {
+      font-size: 14px;
+      color: #aaa;
+    }
+
+    #statusText.connected {
+      color: #4CAF50;
+    }
+
+    #statusText.error {
+      color: #f44336;
+    }
+
+    #progressBar {
+      width: 100%;
+      height: 4px;
+      background: rgba(255,255,255,0.1);
+      border-radius: 2px;
+      overflow: hidden;
+    }
+
+    #progressFill {
+      height: 100%;
+      background: #4CAF50;
+      width: 0%;
+      transition: width 0.3s ease;
+    }
+
+    /* Audio indicator */
+    #audioIndicator {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 16px;
+      background: rgba(76, 175, 80, 0.2);
+      border-radius: 6px;
+      border: 1px solid rgba(76, 175, 80, 0.4);
+    }
+
+    #audioIndicator.playing {
+      animation: pulse 1.5s ease-in-out infinite;
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 0.6; }
+      50% { opacity: 1; }
+    }
+
+    .audio-bars {
+      display: flex;
+      gap: 3px;
+      height: 16px;
+      align-items: flex-end;
+    }
+
+    .audio-bar {
+      width: 3px;
+      background: #4CAF50;
+      border-radius: 2px;
+      animation: audioBar 0.8s ease-in-out infinite;
+    }
+
+    .audio-bar:nth-child(1) { animation-delay: 0s; }
+    .audio-bar:nth-child(2) { animation-delay: 0.1s; }
+    .audio-bar:nth-child(3) { animation-delay: 0.2s; }
+
+    @keyframes audioBar {
+      0%, 100% { height: 4px; }
+      50% { height: 16px; }
+    }
+
+    /* Logs panel */
+    #logsPanel {
+      position: fixed;
+      top: 20px;
+      right: 20px;
+      width: 400px;
+      max-height: 80vh;
+      background: rgba(20, 20, 20, 0.95);
+      border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 8px;
+      padding: 15px;
+      font-family: 'Courier New', monospace;
+      font-size: 12px;
+      overflow-y: auto;
+      display: none;
+    }
+
+    #logsPanel.visible {
+      display: block;
+    }
+
+    .log-entry {
+      padding: 4px 0;
+      border-bottom: 1px solid rgba(255,255,255,0.05);
+    }
+
+    .log-entry:last-child {
+      border-bottom: none;
+    }
+
+    .log-timestamp {
+      color: #888;
+      margin-right: 8px;
+    }
+
+    .log-info { color: #4CAF50; }
+    .log-warn { color: #ff9800; }
+    .log-error { color: #f44336; }
+
+    /* Loading spinner */
+    #loading {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      display: none;
+    }
+
+    #loading.visible {
+      display: block;
+    }
+
+    .spinner {
+      border: 4px solid rgba(255,255,255,0.1);
+      border-top: 4px solid #4CAF50;
+      border-radius: 50%;
+      width: 60px;
+      height: 60px;
+      animation: spin 1s linear infinite;
+    }
+
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+
+    /* Stats overlay */
+    #stats {
+      position: fixed;
+      top: 20px;
+      left: 20px;
+      background: rgba(20, 20, 20, 0.9);
+      padding: 15px;
+      border-radius: 8px;
+      font-size: 14px;
+      min-width: 250px;
+      border: 1px solid rgba(255,255,255,0.1);
+    }
+
+    #stats h3 {
+      margin-bottom: 10px;
+      font-size: 16px;
+      color: #4CAF50;
+    }
+
+    #stats .stat-row {
+      display: flex;
+      justify-content: space-between;
+      padding: 4px 0;
+      border-bottom: 1px solid rgba(255,255,255,0.05);
+    }
+
+    #stats .stat-label {
+      color: #aaa;
+    }
+
+    #stats .stat-value {
+      color: #fff;
+      font-weight: 600;
+    }
+  </style>
+</head>
+<body>
+  <div id="container">
+    <!-- Main image display -->
+    <div id="imageDisplay">
+      <canvas id="audioVisualizer"></canvas>
+      <div id="loading">
+        <div class="spinner"></div>
+      </div>
+      <img id="currentImage" alt="Greek Civilization">
+      <div id="caption">
+        <div id="captionText"></div>
+        <div id="captionCredit"></div>
+      </div>
+    </div>
+
+    <!-- Control panel -->
+    <div id="controlPanel">
+      <div id="controls">
+        <button id="startBtn">🎬 Start Experience</button>
+        <button id="stopBtn" disabled class="danger">⏹️ Stop</button>
+        <button id="toggleLogsBtn">📋 Toggle Logs</button>
+
+        <div id="volumeControl">
+          <span id="volumeIcon">🔊</span>
+          <input type="range" id="volumeSlider" min="0" max="100" value="80">
+        </div>
+
+        <div id="audioIndicator">
+          <div class="audio-bars">
+            <div class="audio-bar"></div>
+            <div class="audio-bar"></div>
+            <div class="audio-bar"></div>
+          </div>
+          <span id="audioStatus">Ready</span>
+        </div>
+      </div>
+      <div id="status">
+        <div id="statusText">Ready to start</div>
+        <div id="progressBar">
+          <div id="progressFill"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Stats overlay -->
+  <div id="stats">
+    <h3>📊 Session Info</h3>
+    <div class="stat-row">
+      <span class="stat-label">Session ID:</span>
+      <span class="stat-value" id="sessionIdValue">-</span>
+    </div>
+    <div class="stat-row">
+      <span class="stat-label">Room:</span>
+      <span class="stat-value" id="roomValue">-</span>
+    </div>
+    <div class="stat-row">
+      <span class="stat-label">Audio Frames:</span>
+      <span class="stat-value" id="audioFramesValue">0</span>
+    </div>
+    <div class="stat-row">
+      <span class="stat-label">Images:</span>
+      <span class="stat-value" id="imagesValue">0/0</span>
+    </div>
+  </div>
+
+  <!-- Logs panel -->
+  <div id="logsPanel">
+    <h3>Event Log</h3>
+    <div id="logEntries"></div>
+  </div>
+
+  <!-- LiveKit Client SDK -->
+  <script src="https://unpkg.com/livekit-client@2.0.0/dist/livekit-client.umd.min.js"></script>
+
+  <script>
+    // Configuration
+    const ORCHESTRATOR_URL = 'http://localhost:3000';
+    const TTS_SERVICE_URL = 'ws://localhost:3002/ws';
+    const KIOSK_ID = 'demo-kiosk-001';
+
+    // State
+    let state = {
+      sessionId: null,
+      room: null,
+      token: null,
+      livekitRoom: null,
+      ttsWebSocket: null,
+      audioContext: null,
+      audioQueue: [],
+      isPlaying: false,
+      audioFramesReceived: 0,
+      imagesShown: 0,
+      totalImages: 2,
+      preloadedImages: new Set(),
+      volume: 0.8,
+    };
+
+    // DOM elements
+    const startBtn = document.getElementById('startBtn');
+    const stopBtn = document.getElementById('stopBtn');
+    const toggleLogsBtn = document.getElementById('toggleLogsBtn');
+    const volumeSlider = document.getElementById('volumeSlider');
+    const volumeIcon = document.getElementById('volumeIcon');
+    const audioIndicator = document.getElementById('audioIndicator');
+    const audioStatus = document.getElementById('audioStatus');
+    const statusText = document.getElementById('statusText');
+    const progressFill = document.getElementById('progressFill');
+    const currentImage = document.getElementById('currentImage');
+    const caption = document.getElementById('caption');
+    const captionText = document.getElementById('captionText');
+    const captionCredit = document.getElementById('captionCredit');
+    const loading = document.getElementById('loading');
+    const logsPanel = document.getElementById('logsPanel');
+    const logEntries = document.getElementById('logEntries');
+
+    // Audio visualizer
+    const canvas = document.getElementById('audioVisualizer');
+    const canvasCtx = canvas.getContext('2d');
+    let analyser = null;
+    let dataArray = null;
+
+    function resizeCanvas() {
+      canvas.width = canvas.offsetWidth;
+      canvas.height = canvas.offsetHeight;
+    }
+    resizeCanvas();
+    window.addEventListener('resize', resizeCanvas);
+
+    // Logging
+    function log(message, type = 'info') {
+      const timestamp = new Date().toLocaleTimeString();
+      const entry = document.createElement('div');
+      entry.className = `log-entry log-${type}`;
+      entry.innerHTML = `<span class="log-timestamp">${timestamp}</span>${message}`;
+      logEntries.appendChild(entry);
+      logEntries.scrollTop = logEntries.scrollHeight;
+      console.log(`[${type.toUpperCase()}] ${message}`);
+    }
+
+    function updateStatus(text, className = '') {
+      statusText.textContent = text;
+      statusText.className = className;
+      log(text, className === 'error' ? 'error' : 'info');
+    }
+
+    function updateStats() {
+      document.getElementById('sessionIdValue').textContent =
+        state.sessionId ? state.sessionId.substring(0, 12) + '...' : '-';
+      document.getElementById('roomValue').textContent =
+        state.room ? state.room.substring(0, 20) + '...' : '-';
+      document.getElementById('audioFramesValue').textContent = state.audioFramesReceived;
+      document.getElementById('imagesValue').textContent =
+        `${state.imagesShown}/${state.totalImages}`;
+    }
+
+    // Audio setup
+    function initAudio() {
+      if (!state.audioContext) {
+        state.audioContext = new (window.AudioContext || window.webkitAudioContext)({
+          sampleRate: 48000
+        });
+
+        // Create analyser for visualization
+        analyser = state.audioContext.createAnalyser();
+        analyser.fftSize = 256;
+        const bufferLength = analyser.frequencyBinCount;
+        dataArray = new Uint8Array(bufferLength);
+
+        log('🎵 Audio context initialized (48kHz)');
+      }
+
+      if (state.audioContext.state === 'suspended') {
+        state.audioContext.resume();
+      }
+    }
+
+    // Decode PCM and play
+    function playPCMAudio(pcmData) {
+      if (!state.audioContext) return;
+
+      try {
+        // Convert base64 to ArrayBuffer
+        const binaryString = atob(pcmData);
+        const bytes = new Uint8Array(binaryString.length);
+        for (let i = 0; i < binaryString.length; i++) {
+          bytes[i] = binaryString.charCodeAt(i);
+        }
+
+        // Convert to Int16 (PCM 16-bit)
+        const int16Array = new Int16Array(bytes.buffer);
+
+        // Convert to Float32 for Web Audio API
+        const float32Array = new Float32Array(int16Array.length);
+        for (let i = 0; i < int16Array.length; i++) {
+          float32Array[i] = int16Array[i] / 32768.0; // Normalize to [-1, 1]
+        }
+
+        // Create audio buffer
+        const audioBuffer = state.audioContext.createBuffer(
+          1, // mono
+          float32Array.length,
+          48000 // sample rate
+        );
+        audioBuffer.getChannelData(0).set(float32Array);
+
+        // Create source
+        const source = state.audioContext.createBufferSource();
+        source.buffer = audioBuffer;
+
+        // Create gain node for volume control
+        const gainNode = state.audioContext.createGain();
+        gainNode.gain.value = state.volume;
+
+        // Connect: source → gain → analyser → destination
+        source.connect(gainNode);
+        gainNode.connect(analyser);
+        analyser.connect(state.audioContext.destination);
+
+        // Play
+        source.start();
+        state.isPlaying = true;
+        audioIndicator.classList.add('playing');
+        audioStatus.textContent = 'Playing';
+
+        source.onended = () => {
+          if (state.audioQueue.length === 0) {
+            state.isPlaying = false;
+            audioIndicator.classList.remove('playing');
+            audioStatus.textContent = 'Ready';
+          }
+        };
+
+      } catch (error) {
+        log(`Error playing audio: ${error.message}`, 'error');
+      }
+    }
+
+    // Audio visualizer
+    function drawVisualizer() {
+      if (!analyser || !state.isPlaying) {
+        requestAnimationFrame(drawVisualizer);
+        return;
+      }
+
+      analyser.getByteFrequencyData(dataArray);
+
+      canvasCtx.fillStyle = 'rgb(0, 0, 0)';
+      canvasCtx.fillRect(0, 0, canvas.width, canvas.height);
+
+      const barWidth = (canvas.width / dataArray.length) * 2.5;
+      let barHeight;
+      let x = 0;
+
+      for (let i = 0; i < dataArray.length; i++) {
+        barHeight = (dataArray[i] / 255) * canvas.height * 0.8;
+
+        const hue = (i / dataArray.length) * 120 + 120; // Green to cyan
+        canvasCtx.fillStyle = `hsla(${hue}, 70%, 50%, 0.5)`;
+        canvasCtx.fillRect(x, canvas.height - barHeight, barWidth, barHeight);
+
+        x += barWidth + 1;
+      }
+
+      requestAnimationFrame(drawVisualizer);
+    }
+
+    drawVisualizer();
+
+    // Volume control
+    volumeSlider.addEventListener('input', (e) => {
+      state.volume = e.target.value / 100;
+      if (state.volume === 0) {
+        volumeIcon.textContent = '🔇';
+      } else if (state.volume < 0.5) {
+        volumeIcon.textContent = '🔉';
+      } else {
+        volumeIcon.textContent = '🔊';
+      }
+    });
+
+    // Image display
+    function showImage(imageData) {
+      const { cdn_url, caption: cap, credit, transition = 'crossfade' } = imageData;
+
+      log(`🖼️ Showing image: ${imageData.id}`);
+      loading.classList.add('visible');
+
+      const img = new Image();
+      img.onload = () => {
+        loading.classList.remove('visible');
+
+        currentImage.classList.remove('visible');
+
+        setTimeout(() => {
+          currentImage.src = cdn_url;
+          captionText.textContent = cap || '';
+          captionCredit.textContent = credit || '';
+
+          setTimeout(() => {
+            currentImage.classList.add('visible');
+            if (cap || credit) {
+              caption.classList.add('visible');
+            }
+          }, 50);
+        }, transition === 'crossfade' ? 400 : 0);
+
+        state.imagesShown++;
+        updateStats();
+      };
+
+      img.onerror = () => {
+        loading.classList.remove('visible');
+        log(`Failed to load image: ${cdn_url}`, 'error');
+      };
+
+      img.src = cdn_url;
+    }
+
+    function preloadImage(imageData) {
+      const { id, cdn_url } = imageData;
+
+      if (state.preloadedImages.has(id)) {
+        return;
+      }
+
+      log(`📥 Preloading image: ${id}`);
+      const img = new Image();
+      img.onload = () => {
+        state.preloadedImages.add(id);
+        log(`✅ Preloaded: ${id}`);
+      };
+      img.onerror = () => {
+        log(`❌ Failed to preload: ${id}`, 'error');
+      };
+      img.src = cdn_url;
+    }
+
+    // TTS WebSocket connection
+    function connectToTTS() {
+      return new Promise((resolve, reject) => {
+        log('🔌 Connecting to TTS service...');
+
+        const ws = new WebSocket(TTS_SERVICE_URL);
+        state.ttsWebSocket = ws;
+
+        ws.onopen = () => {
+          log('✅ Connected to TTS service');
+          audioStatus.textContent = 'Connected';
+          resolve();
+        };
+
+        ws.onmessage = (event) => {
+          try {
+            const message = JSON.parse(event.data);
+
+            switch (message.type) {
+              case 'audio_frame':
+                state.audioFramesReceived++;
+
+                // Play audio frame
+                playPCMAudio(message.data_base64);
+
+                if (state.audioFramesReceived % 50 === 0) {
+                  log(`🎵 Audio frame ${state.audioFramesReceived}`);
+                  updateStats();
+                }
+
+                // Update progress (rough estimate)
+                const progress = Math.min(60 + (state.audioFramesReceived / 1118) * 35, 95);
+                progressFill.style.width = `${progress}%`;
+                break;
+
+              case 'img_preload':
+                preloadImage(message);
+                break;
+
+              case 'img_show':
+                showImage(message);
+                break;
+
+              case 'end_of_stream':
+                log(`✅ Stream completed: ${state.audioFramesReceived} audio frames`);
+                updateStatus('Experience complete! 🎉', 'connected');
+                progressFill.style.width = '100%';
+                audioStatus.textContent = 'Complete';
+                break;
+
+              case 'error':
+                log(`TTS error: ${message.message}`, 'error');
+                break;
+            }
+          } catch (error) {
+            log(`Error processing TTS message: ${error.message}`, 'error');
+          }
+        };
+
+        ws.onerror = (error) => {
+          log(`TTS WebSocket error: ${error}`, 'error');
+          reject(error);
+        };
+
+        ws.onclose = () => {
+          log('TTS connection closed');
+          audioStatus.textContent = 'Disconnected';
+        };
+      });
+    }
+
+    // LiveKit connection
+    async function connectToLiveKit() {
+      try {
+        updateStatus('Connecting to LiveKit...', 'connected');
+
+        const room = new LivekitClient.Room();
+        state.livekitRoom = room;
+
+        room.on(LivekitClient.RoomEvent.DataReceived, (payload, participant) => {
+          try {
+            const decoder = new TextDecoder();
+            const text = decoder.decode(payload);
+            const message = JSON.parse(text);
+
+            log(`📨 LiveKit: ${message.type}`);
+          } catch (error) {
+            log(`Error processing LiveKit message: ${error.message}`, 'error');
+          }
+        });
+
+        room.on(LivekitClient.RoomEvent.Connected, () => {
+          log('✅ Connected to LiveKit room');
+          updateStatus('Connected to LiveKit', 'connected');
+        });
+
+        await room.connect(state.livekitUrl, state.token);
+
+      } catch (error) {
+        log(`LiveKit connection error: ${error.message}`, 'error');
+        updateStatus('Failed to connect to LiveKit', 'error');
+        throw error;
+      }
+    }
+
+    // Session management
+    async function startSession() {
+      try {
+        startBtn.disabled = true;
+        updateStatus('Creating session...');
+        progressFill.style.width = '10%';
+
+        // Initialize audio
+        initAudio();
+
+        // Create session
+        const sessionResponse = await fetch(`${ORCHESTRATOR_URL}/start_session`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ kiosk_id: KIOSK_ID })
+        });
+
+        if (!sessionResponse.ok) {
+          throw new Error('Failed to create session');
+        }
+
+        const sessionData = await sessionResponse.json();
+        state.sessionId = sessionData.session_id;
+        state.token = sessionData.token;
+        state.livekitUrl = sessionData.livekit_url;
+        state.room = sessionData.room_name;
+
+        log(`✅ Session created: ${state.sessionId}`);
+        updateStats();
+        progressFill.style.width = '30%';
+
+        // Connect to TTS first (for audio)
+        await connectToTTS();
+        progressFill.style.width = '50%';
+
+        // Connect to LiveKit (for control messages - optional)
+        try {
+          await connectToLiveKit();
+        } catch (error) {
+          log('LiveKit connection failed (continuing with TTS only)', 'warn');
+        }
+        progressFill.style.width = '60%';
+
+        // Start narration
+        updateStatus('Starting narration...');
+
+        // Send start_stream to TTS
+        state.ttsWebSocket.send(JSON.stringify({
+          type: 'start_stream',
+          topic: 'greek_civilization',
+          session_id: state.sessionId
+        }));
+
+        // Also notify orchestrator (optional, for session tracking)
+        fetch(`${ORCHESTRATOR_URL}/start_narration`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            session_id: state.sessionId,
+            topic: 'greek_civilization'
+          })
+        });
+
+        log('🎬 Narration started with audio!');
+        updateStatus('🎵 Narration in progress with audio...', 'connected');
+
+        stopBtn.disabled = false;
+        updateStats();
+
+      } catch (error) {
+        log(`Error: ${error.message}`, 'error');
+        updateStatus(`Error: ${error.message}`, 'error');
+        startBtn.disabled = false;
+        progressFill.style.width = '0%';
+      }
+    }
+
+    async function stopSession() {
+      try {
+        stopBtn.disabled = true;
+        updateStatus('Stopping session...');
+
+        // Close TTS WebSocket
+        if (state.ttsWebSocket) {
+          state.ttsWebSocket.close();
+          state.ttsWebSocket = null;
+        }
+
+        // Disconnect from LiveKit
+        if (state.livekitRoom) {
+          state.livekitRoom.disconnect();
+          state.livekitRoom = null;
+        }
+
+        // End session
+        if (state.sessionId) {
+          await fetch(`${ORCHESTRATOR_URL}/session/${state.sessionId}`, {
+            method: 'DELETE'
+          });
+          log('✅ Session ended');
+        }
+
+        // Reset state
+        state = {
+          sessionId: null,
+          room: null,
+          token: null,
+          livekitRoom: null,
+          ttsWebSocket: null,
+          audioContext: state.audioContext, // Keep audio context
+          audioQueue: [],
+          isPlaying: false,
+          audioFramesReceived: 0,
+          imagesShown: 0,
+          totalImages: 2,
+          preloadedImages: new Set(),
+          volume: state.volume,
+        };
+
+        updateStats();
+        updateStatus('Session ended');
+        progressFill.style.width = '0%';
+        audioStatus.textContent = 'Ready';
+        audioIndicator.classList.remove('playing');
+        startBtn.disabled = false;
+
+        // Clear display
+        currentImage.classList.remove('visible');
+        caption.classList.remove('visible');
+
+      } catch (error) {
+        log(`Error stopping session: ${error.message}`, 'error');
+        startBtn.disabled = false;
+        stopBtn.disabled = false;
+      }
+    }
+
+    // Event listeners
+    startBtn.addEventListener('click', startSession);
+    stopBtn.addEventListener('click', stopSession);
+    toggleLogsBtn.addEventListener('click', () => {
+      logsPanel.classList.toggle('visible');
+    });
+
+    // Initialize
+    log('🏛️ Greek Civilization Kiosk initialized');
+    log(`🎵 Audio: Web Audio API (48kHz PCM)`);
+    log(`🔌 Orchestrator: ${ORCHESTRATOR_URL}`);
+    log(`🎙️ TTS Service: ${TTS_SERVICE_URL}`);
+    log(`🆔 Kiosk ID: ${KIOSK_ID}`);
+    log('');
+    log('Click "Start Experience" to begin! 🎬');
+  </script>
+</body>
+</html>
