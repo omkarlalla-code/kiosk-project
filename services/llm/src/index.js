@@ -10,6 +10,7 @@
 require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
+const Groq = require('groq-sdk');
 const fs = require('fs').promises;
 const path = require('path');
 
@@ -19,12 +20,42 @@ const PORT = process.env.PORT || 3003;
 app.use(cors());
 app.use(express.json());
 
-// Ollama configuration (FREE - runs locally!)
-const OLLAMA_URL = process.env.OLLAMA_URL || 'http://localhost:11434';
-const OLLAMA_MODEL = process.env.OLLAMA_MODEL || 'llama3.2:3b';
+// Groq configuration (FREE tier - fast inference!)
+const groq = new Groq({
+  apiKey: process.env.GROQ_API_KEY
+});
+const GROQ_MODEL = process.env.GROQ_MODEL || 'llama-3.3-70b-versatile';
 
 // In-memory conversation store (use Redis in production)
 const conversations = new Map();
+
+// Response cache for faster replies (5 minute TTL)
+const responseCache = new Map();
+const CACHE_TTL = 5 * 60 * 1000; // 5 minutes
+
+function getCacheKey(sessionId, message) {
+  return `${sessionId}:${message.toLowerCase().trim()}`;
+}
+
+function getCachedResponse(sessionId, message) {
+  const key = getCacheKey(sessionId, message);
+  const cached = responseCache.get(key);
+
+  if (cached && Date.now() - cached.timestamp < CACHE_TTL) {
+    console.log(`💾 Cache hit for: "${message}"`);
+    return cached.response;
+  }
+
+  return null;
+}
+
+function cacheResponse(sessionId, message, response) {
+  const key = getCacheKey(sessionId, message);
+  responseCache.set(key, {
+    response,
+    timestamp: Date.now()
+  });
+}
 
 // Load system prompt from file
 let systemPrompt = '';
@@ -64,16 +95,17 @@ app.get('/health', (req, res) => {
   res.json({
     status: 'ok',
     service: 'llm',
-    provider: 'ollama',
-    model: OLLAMA_MODEL,
-    ollama_url: OLLAMA_URL,
+    provider: 'groq',
+    model: GROQ_MODEL,
     active_conversations: conversations.size,
+    cached_responses: responseCache.size,
     prompt_loaded: systemPrompt.length > 0,
-    cost: 'FREE!'
+    cost: 'FREE! (Generous free tier)',
+    speed: 'FAST! (Groq optimized + caching)'
   });
 });
 
-// POST /chat - Send message and get Ollama response
+// POST /chat - Send message and get Groq response
 app.post('/chat', async (req, res) => {
   try {
     const { session_id, message, stream = false } = req.body;
@@ -96,32 +128,40 @@ app.post('/chat', async (req, res) => {
 
     console.log(`💬 [${session_id}] User: ${message}`);
 
-    // Build Ollama messages format (with system prompt)
-    const ollamaMessages = [
-      {
-        role: 'system',
-        content: systemPrompt
-      },
-      ...history
-    ];
+    // Check cache first
+    const cachedResponse = getCachedResponse(session_id, message);
+    let assistantMessage;
+    let tokensUsed = 0;
+    let fromCache = false;
 
-    // Call Ollama API
-    const ollamaResponse = await fetch(`${OLLAMA_URL}/api/chat`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        model: OLLAMA_MODEL,
-        messages: ollamaMessages,
-        stream: false
-      })
-    });
+    if (cachedResponse) {
+      assistantMessage = cachedResponse;
+      fromCache = true;
+    } else {
+      // Build messages with system prompt
+      const messages = [
+        {
+          role: 'system',
+          content: systemPrompt
+        },
+        ...history
+      ];
 
-    if (!ollamaResponse.ok) {
-      throw new Error(`Ollama error: ${ollamaResponse.statusText}`);
+      // Call Groq API with caching enabled
+      const completion = await groq.chat.completions.create({
+        model: GROQ_MODEL,
+        messages: messages,
+        temperature: 0.7,
+        max_tokens: 1024,
+        // Groq automatically caches prompts for faster responses
+      });
+
+      assistantMessage = completion.choices[0].message.content;
+      tokensUsed = completion.usage.total_tokens;
+
+      // Cache the response
+      cacheResponse(session_id, message, assistantMessage);
     }
-
-    const data = await ollamaResponse.json();
-    const assistantMessage = data.message.content;
 
     // Add assistant response to history
     history.push({
@@ -135,8 +175,10 @@ app.post('/chat', async (req, res) => {
       response: assistantMessage,
       session_id,
       conversation_length: history.length,
-      model: OLLAMA_MODEL,
-      cost: 'FREE!'
+      model: GROQ_MODEL,
+      cost: 'FREE!',
+      tokens_used: tokensUsed,
+      from_cache: fromCache
     });
 
   } catch (error) {
@@ -174,12 +216,12 @@ async function start() {
   await loadSystemPrompt();
 
   app.listen(PORT, () => {
-    console.log(`\n🤖 LLM Service (Ollama - FREE!)`);
+    console.log(`\n🤖 LLM Service (Groq - FREE & FAST!)`);
     console.log(`📡 Listening on port ${PORT}`);
-    console.log(`🧠 Model: ${OLLAMA_MODEL}`);
-    console.log(`🌐 Ollama: ${OLLAMA_URL}`);
+    console.log(`🧠 Model: ${GROQ_MODEL}`);
+    console.log(`⚡ Speed: Ultra-fast inference (Groq LPU)`);
     console.log(`📝 System prompt: ${systemPrompt.length} chars`);
-    console.log(`💰 Cost: $0.00 (runs locally!)`);
+    console.log(`💰 Cost: FREE (Generous free tier)`);
     console.log(`\n💡 Edit prompt: services/llm/system-prompt.txt`);
     console.log(`   Then POST to /reload-prompt to apply changes\n`);
   });

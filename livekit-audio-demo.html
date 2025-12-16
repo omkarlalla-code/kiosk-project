@@ -831,13 +831,47 @@ Their influence echoes through the millennia.`,
         }
 
         const data = await response.json();
-        log(`🤖 Assistant: "${data.assistant_response}"`, 'info');
+        const assistantResponse = data.assistant_response;
+        log(`🤖 Assistant: "${assistantResponse}"`, 'info');
 
-        // The orchestrator will handle TTS streaming automatically
-        // Audio will come through LiveKit
+        // Speak the response using browser TTS
+        speakResponse(assistantResponse);
 
       } catch (error) {
         log(`❌ LLM error: ${error.message}`, 'error');
+      }
+    }
+
+    function speakResponse(text) {
+      try {
+        const synth = window.speechSynthesis;
+
+        // Cancel any ongoing speech
+        synth.cancel();
+
+        const utterance = new SpeechSynthesisUtterance(text);
+        utterance.rate = 0.9;
+        utterance.pitch = 1.0;
+        utterance.volume = 1.0;
+
+        // Use available voice
+        const voices = synth.getVoices();
+        const enVoice = voices.find(v => v.lang.startsWith('en')) || voices[0];
+        if (enVoice) {
+          utterance.voice = enVoice;
+        }
+
+        utterance.onstart = () => {
+          log('🔊 Speaking response...', 'info');
+        };
+
+        utterance.onend = () => {
+          log('✅ Finished speaking', 'info');
+        };
+
+        synth.speak(utterance);
+      } catch (error) {
+        log(`❌ TTS error: ${error.message}`, 'error');
       }
     }
 
