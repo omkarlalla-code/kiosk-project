@@ -293,8 +293,14 @@
     </div>
   </div>
 
-  <!-- MediaPipe Hand Tracker (ES module loader) -->
-  <script src="/gesture-mediapipe.js"></script>
+  <!-- TensorFlow.js and Handpose (from CDN) -->
+  <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs-core"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs-converter"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs-backend-webgl"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/handpose"></script>
+
+  <!-- Handpose Tracker Integration -->
+  <script src="/gesture-handpose.js"></script>
 
   <!-- Gesture Recognition Module -->
   <script src="/gesture-recognition.js"></script>

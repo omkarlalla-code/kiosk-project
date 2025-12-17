@@ -58,22 +58,22 @@ class GestureRecognizer {
   }
 
   /**
-   * Load MediaPipe Hand Landmarker model
+   * Load Handpose hand tracking model
    */
   async loadMediaPipe() {
-    console.log('📦 Loading MediaPipe HandTracker...');
+    console.log('📦 Loading Handpose tracker...');
 
-    // Check if MediaPipeHandTracker is available
-    if (typeof window.MediaPipeHandTracker === 'undefined') {
-      throw new Error('MediaPipeHandTracker not loaded. Include gesture-mediapipe.js first.');
+    // Check if HandposeTracker is available
+    if (typeof window.HandposeTracker === 'undefined') {
+      throw new Error('HandposeTracker not loaded. Include gesture-handpose.js first.');
     }
 
-    // Create MediaPipe hand tracker
-    this.handTracker = new window.MediaPipeHandTracker();
+    // Create Handpose tracker
+    this.handTracker = new window.HandposeTracker();
     await this.handTracker.initialize(this.videoElement, this.canvasElement);
 
     this.isModelLoaded = true;
-    console.log('✅ MediaPipe HandTracker ready');
+    console.log('✅ Handpose tracker ready');
   }
 
   /**
