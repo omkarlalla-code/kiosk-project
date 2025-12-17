@@ -24,14 +24,14 @@ class MediaPipeHandTracker {
       this.videoElement = videoElement;
       this.canvasElement = canvasElement;
 
-      // Dynamically import MediaPipe Tasks Vision
-      const vision = await import('https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14/vision_bundle.js');
+      // Dynamically import MediaPipe Tasks Vision from unpkg
+      const vision = await import('https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@latest/vision_bundle.js');
 
       const { HandLandmarker, FilesetResolver } = vision;
 
       // Load the MediaPipe WASM files
       const filesetResolver = await FilesetResolver.forVisionTasks(
-        'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14/wasm'
+        'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@latest/wasm'
       );
 
       // Create HandLandmarker instance
