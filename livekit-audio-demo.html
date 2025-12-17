@@ -393,7 +393,7 @@
 <body>
   <div id="container">
     <div id="imageDisplay">
-      <img id="currentImage" alt="Greek Civilization">
+      <img id="currentImage" alt="Greek Civilization" class="visible" src="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' width='1920' height='1080'><rect fill='%23000' width='1920' height='1080'/><text x='50%' y='45%' fill='white' font-size='72' text-anchor='middle' font-family='Arial'>🏛️ Greek Civilization</text><text x='50%' y='55%' fill='%23888' font-size='32' text-anchor='middle' font-family='Arial'>Click Start to begin your journey</text></svg>">
       <div id="caption">
         <div id="captionText"></div>
         <div id="captionCredit"></div>
@@ -469,8 +469,8 @@
     <div id="gestureIndicator" class="gesture-indicator"></div>
   </div>
 
-  <!-- Gesture Control Buttons -->
-  <div id="gestureControls">
+  <!-- Gesture Control Buttons (hidden) -->
+  <div id="gestureControls" style="display: none;">
     <button id="toggleGestureBtn">🤚 Enable Gestures</button>
   </div>
 
@@ -492,33 +492,7 @@
     const ORCHESTRATOR_URL = 'http://localhost:3000';
     const KIOSK_ID = 'livekit-demo-001';
 
-    // Greek civilization narration script
-    const GREEK_SCRIPT = {
-      text: `Welcome to ancient Greece, the cradle of Western civilization.
-Before you stands the Parthenon, the most iconic symbol of ancient Athens.
-Built in 447 BC, this magnificent temple was dedicated to the goddess Athena.
-The Acropolis of Athens rises majestically above the city.
-Here, democracy was born and philosophy flourished.
-Greek civilization gave us mathematics, theater, and the Olympic Games.
-Their influence echoes through the millennia.`,
-      images: [
-        {
-          id: 'parthenon',
-          // Using placeholder images that work from file://
-          url: 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" width="1920" height="1080"><rect fill="%23222" width="1920" height="1080"/><text x="50%" y="50%" fill="white" font-size="48" text-anchor="middle" font-family="Arial">🏛️ The Parthenon</text></svg>',
-          showAtWord: 10,
-          caption: 'The Parthenon — Athens, 447 BC',
-          credit: 'Demo Image'
-        },
-        {
-          id: 'acropolis',
-          url: 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" width="1920" height="1080"><rect fill="%23333" width="1920" height="1080"/><text x="50%" y="50%" fill="white" font-size="48" text-anchor="middle" font-family="Arial">🏛️ The Acropolis</text></svg>',
-          showAtWord: 30,
-          caption: 'The Acropolis of Athens',
-          credit: 'Demo Image'
-        }
-      ]
-    };
+    // No initial monologue - starts with conversation only
 
     let state = {
       room: null,
@@ -584,23 +558,7 @@ Their influence echoes through the millennia.`,
       }
     }
 
-    function showImage(imageData) {
-      log(`🖼️ Showing: ${imageData.id}`);
-      currentImage.classList.remove('visible');
-
-      setTimeout(() => {
-        currentImage.src = imageData.url;
-        captionText.textContent = imageData.caption;
-        captionCredit.textContent = imageData.credit;
-
-        setTimeout(() => {
-          currentImage.classList.add('visible');
-          caption.classList.add('visible');
-          state.imagesShown++;
-          updateStats();
-        }, 50);
-      }, 400);
-    }
+    // Image display is now handled by ImageSyncSystem via DataChannel messages
 
     async function connectToLiveKit() {
       try {
@@ -702,114 +660,9 @@ Their influence echoes through the millennia.`,
     }
 
     async function publishAudioToLiveKit() {
-      try {
-        updateStatus('Setting up audio track...');
-        log('🎤 Creating audio track for LiveKit');
-
-        // Create an audio context and stream
-        const audioContext = new AudioContext({ sampleRate: 48000 });
-        const dest = audioContext.createMediaStreamDestination();
-
-        // Create TTS synthesizer
-        const synth = window.speechSynthesis;
-        const utterance = new SpeechSynthesisUtterance(GREEK_SCRIPT.text);
-        state.ttsUtterance = utterance;
-
-        // Configure TTS
-        utterance.rate = 0.9;
-        utterance.pitch = 1.0;
-        utterance.volume = 1.0;
-
-        // Get available voices
-        let voices = synth.getVoices();
-        if (voices.length === 0) {
-          // Wait for voices to load
-          await new Promise(resolve => {
-            synth.onvoiceschanged = () => {
-              voices = synth.getVoices();
-              resolve();
-            };
-          });
-        }
-
-        // Prefer English voice
-        const enVoice = voices.find(v => v.lang.startsWith('en')) || voices[0];
-        if (enVoice) {
-          utterance.voice = enVoice;
-          log(`🗣️ Using voice: ${enVoice.name}`);
-        }
-
-        // Handle image transitions based on word boundaries
-        let wordsSoFar = 0;
-        const words = GREEK_SCRIPT.text.split(/\s+/);
-
-        utterance.onboundary = (event) => {
-          if (event.name === 'word') {
-            wordsSoFar++;
-            state.wordCount = wordsSoFar;
-
-            // Check for image transitions
-            GREEK_SCRIPT.images.forEach(img => {
-              if (wordsSoFar === img.showAtWord) {
-                showImage(img);
-              }
-            });
-
-            // Update progress
-            const progress = 60 + (wordsSoFar / words.length) * 35;
-            progressFill.style.width = `${Math.min(progress, 95)}%`;
-          }
-        };
-
-        utterance.onstart = () => {
-          log('🎵 Narration started');
-          updateStatus('🎙️ Narrating through LiveKit...', 'connected');
-          state.isNarrating = true;
-        };
-
-        utterance.onend = () => {
-          log('✅ Narration complete');
-          updateStatus('Experience complete! 🎉', 'connected');
-          progressFill.style.width = '100%';
-          state.isNarrating = false;
-        };
-
-        utterance.onerror = (error) => {
-          log(`❌ TTS error: ${error.error}`, 'error');
-        };
-
-        // Create LocalAudioTrack from MediaStream
-        // Note: This is a workaround since we can't directly capture TTS audio
-        // In production, you'd use a proper audio source
-        const stream = await navigator.mediaDevices.getUserMedia({
-          audio: {
-            echoCancellation: false,
-            noiseSuppression: false,
-            autoGainControl: false
-          }
-        });
-
-        const track = new LivekitClient.LocalAudioTrack(stream.getAudioTracks()[0]);
-        state.audioTrack = track;
-
-        // Publish track to LiveKit
-        await state.room.localParticipant.publishTrack(track, {
-          name: 'narration',
-          source: LivekitClient.Track.Source.Microphone
-        });
-
-        log('✅ Audio track published to LiveKit');
-        updateStats();
-
-        // Start TTS
-        synth.speak(utterance);
-
-        progressFill.style.width = '80%';
-
-      } catch (error) {
-        log(`❌ Audio setup error: ${error.message}`, 'error');
-        updateStatus('Audio setup failed', 'error');
-      }
+      // Audio publishing disabled - using conversation-based TTS instead
+      log('ℹ️ Skipping initial audio track (conversation mode)');
+      progressFill.style.width = '80%';
     }
 
     async function startExperience() {
