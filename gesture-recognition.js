@@ -61,20 +61,19 @@ class GestureRecognizer {
    * Load MediaPipe Hand Landmarker model
    */
   async loadMediaPipe() {
-    // Note: MediaPipe Tasks for Web requires the @mediapipe/tasks-vision package
-    // For now, we'll use a simplified approach with manual landmark analysis
+    console.log('📦 Loading MediaPipe HandTracker...');
 
-    console.log('📦 Loading MediaPipe model from CDN...');
+    // Check if MediaPipeHandTracker is available
+    if (typeof window.MediaPipeHandTracker === 'undefined') {
+      throw new Error('MediaPipeHandTracker not loaded. Include gesture-mediapipe.js first.');
+    }
 
-    // The actual implementation would use:
-    // const vision = await import('https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision/vision_bundle.js');
-    // this.handLandmarker = await vision.HandLandmarker.createFromOptions(...);
-
-    // For this implementation, we'll use a placeholder that can be replaced
-    // with the actual MediaPipe Tasks library
+    // Create MediaPipe hand tracker
+    this.handTracker = new window.MediaPipeHandTracker();
+    await this.handTracker.initialize(this.videoElement, this.canvasElement);
 
     this.isModelLoaded = true;
-    console.log('✅ MediaPipe model ready');
+    console.log('✅ MediaPipe HandTracker ready');
   }
 
   /**
@@ -124,7 +123,16 @@ class GestureRecognizer {
 
     this.isRunning = true;
     console.log('▶️ Starting gesture detection');
-    this.detectGestures();
+
+    // Start MediaPipe hand tracking with callback
+    this.handTracker.start((results) => {
+      if (results.landmarks && results.landmarks.length > 0) {
+        const gesture = this.analyzeGesture(results.landmarks);
+        if (gesture) {
+          this.handleGesture(gesture);
+        }
+      }
+    });
   }
 
   /**
@@ -134,37 +142,17 @@ class GestureRecognizer {
     this.isRunning = false;
     console.log('⏹️ Stopped gesture detection');
 
+    // Stop MediaPipe hand tracker
+    if (this.handTracker) {
+      this.handTracker.stop();
+    }
+
     // Stop camera
     if (this.videoElement && this.videoElement.srcObject) {
       const tracks = this.videoElement.srcObject.getTracks();
       tracks.forEach(track => track.stop());
       this.videoElement.srcObject = null;
     }
-  }
-
-  /**
-   * Main gesture detection loop
-   */
-  async detectGestures() {
-    if (!this.isRunning) return;
-
-    const ctx = this.canvasElement.getContext('2d');
-
-    // Draw video frame to canvas
-    ctx.drawImage(this.videoElement, 0, 0, this.canvasElement.width, this.canvasElement.height);
-
-    // In a full implementation with MediaPipe Tasks, we would:
-    // const detections = await this.handLandmarker.detect(this.videoElement);
-    // const gesture = this.analyzeGesture(detections);
-
-    // For now, we'll simulate gesture detection
-    // This would be replaced with actual MediaPipe landmark analysis
-
-    // Draw guide overlay
-    this.drawGuideOverlay(ctx);
-
-    // Continue loop
-    requestAnimationFrame(() => this.detectGestures());
   }
 
   /**
@@ -284,47 +272,6 @@ class GestureRecognizer {
    */
   on(gesture, callback) {
     this.callbacks[gesture] = callback;
-  }
-
-  /**
-   * Draw guide overlay on canvas
-   */
-  drawGuideOverlay(ctx) {
-    const width = this.canvasElement.width;
-    const height = this.canvasElement.height;
-
-    // Semi-transparent overlay
-    ctx.fillStyle = 'rgba(0, 0, 0, 0.3)';
-    ctx.fillRect(0, 0, width, height);
-
-    // Title
-    ctx.fillStyle = 'white';
-    ctx.font = 'bold 24px Arial';
-    ctx.textAlign = 'center';
-    ctx.fillText('✋ Gesture Control', width / 2, 40);
-
-    // Instructions
-    ctx.font = '16px Arial';
-    ctx.textAlign = 'left';
-    const instructions = [
-      '👆 Point - Select/Click',
-      '✋ Open Palm - Stop/Pause',
-      '👍 Thumbs Up - Next',
-      '✌️ Peace - Volume Up',
-      '✊ Fist - Close'
-    ];
-
-    let y = 80;
-    instructions.forEach(instruction => {
-      ctx.fillText(instruction, 20, y);
-      y += 30;
-    });
-
-    // Status indicator
-    ctx.fillStyle = this.isRunning ? '#4CAF50' : '#f44336';
-    ctx.beginPath();
-    ctx.arc(width - 30, 30, 10, 0, 2 * Math.PI);
-    ctx.fill();
   }
 
   /**
