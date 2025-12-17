@@ -317,6 +317,77 @@
       background: rgba(128, 128, 128, 0.2);
       color: #888;
     }
+
+    /* Gesture Control Styles */
+    #gesturePreview {
+      position: fixed;
+      bottom: 120px;
+      right: 20px;
+      width: 240px;
+      height: 180px;
+      background: rgba(20, 20, 20, 0.95);
+      border: 2px solid rgba(76, 175, 80, 0.4);
+      border-radius: 8px;
+      overflow: hidden;
+      display: none;
+    }
+
+    #gesturePreview.active {
+      display: block;
+    }
+
+    #gestureCamera {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      transform: scaleX(-1); /* Mirror camera */
+    }
+
+    #gestureCanvas {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+    }
+
+    #gestureControls {
+      position: fixed;
+      bottom: 310px;
+      right: 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    #gestureControls button {
+      padding: 8px 16px;
+      font-size: 14px;
+      min-width: 240px;
+    }
+
+    .gesture-indicator {
+      position: absolute;
+      bottom: 10px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: rgba(76, 175, 80, 0.9);
+      padding: 6px 12px;
+      border-radius: 6px;
+      font-size: 14px;
+      font-weight: 600;
+      display: none;
+      animation: fadeInOut 2s ease-in-out;
+    }
+
+    .gesture-indicator.visible {
+      display: block;
+    }
+
+    @keyframes fadeInOut {
+      0%, 100% { opacity: 0; }
+      10%, 90% { opacity: 1; }
+    }
   </style>
 </head>
 <body>
@@ -391,6 +462,24 @@
     <div id="logEntries"></div>
   </div>
 
+  <!-- Gesture Control Preview -->
+  <div id="gesturePreview">
+    <video id="gestureCamera" autoplay playsinline></video>
+    <canvas id="gestureCanvas"></canvas>
+    <div id="gestureIndicator" class="gesture-indicator"></div>
+  </div>
+
+  <!-- Gesture Control Buttons -->
+  <div id="gestureControls">
+    <button id="toggleGestureBtn">🤚 Enable Gestures</button>
+  </div>
+
+  <!-- MediaPipe Tasks Vision (from CDN) -->
+  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision/vision_bundle.js"></script>
+
+  <!-- Gesture Recognition Module -->
+  <script src="/gesture-recognition.js"></script>
+
   <script src="/livekit-client.umd.js"></script>
 
   <script>
@@ -435,13 +524,16 @@ Their influence echoes through the millennia.`,
       ttsUtterance: null,
       recognition: null,
       isListening: false,
-      transcript: ''
+      transcript: '',
+      gestureEnabled: false,
+      gestureRecognizer: null
     };
 
     const startBtn = document.getElementById('startBtn');
     const stopBtn = document.getElementById('stopBtn');
     const micBtn = document.getElementById('micBtn');
     const toggleLogsBtn = document.getElementById('toggleLogsBtn');
+    const toggleGestureBtn = document.getElementById('toggleGestureBtn');
     const statusText = document.getElementById('statusText');
     const progressFill = document.getElementById('progressFill');
     const currentImage = document.getElementById('currentImage');
@@ -454,6 +546,8 @@ Their influence echoes through the millennia.`,
     const transcriptFinal = document.getElementById('transcriptFinal');
     const transcriptInterim = document.getElementById('transcriptInterim');
     const sttStatus = document.getElementById('sttStatus');
+    const gesturePreview = document.getElementById('gesturePreview');
+    const gestureIndicator = document.getElementById('gestureIndicator');
 
     function log(message, type = 'info') {
       const timestamp = new Date().toLocaleTimeString();
@@ -906,6 +1000,116 @@ Their influence echoes through the millennia.`,
       }
     }
 
+    // ========== Gesture Control Functions ==========
+
+    function showGestureIndicator(gestureName) {
+      gestureIndicator.textContent = `👋 ${gestureName}`;
+      gestureIndicator.classList.add('visible');
+      setTimeout(() => {
+        gestureIndicator.classList.remove('visible');
+      }, 2000);
+    }
+
+    async function initializeGestureControl() {
+      try {
+        log('🤚 Initializing gesture control...', 'info');
+
+        // Create gesture recognizer
+        state.gestureRecognizer = new GestureRecognizer();
+
+        // Initialize with camera and canvas
+        await state.gestureRecognizer.initialize('gestureCamera', 'gestureCanvas');
+
+        // Register gesture handlers
+        state.gestureRecognizer.on('thumbs_up', () => {
+          log('👍 Gesture: Thumbs Up → Next Image', 'info');
+          showGestureIndicator('Thumbs Up - Next Image');
+          // Trigger next image if images are queued
+          const images = Array.from(imageSync.imageQueue.values());
+          if (images.length > 0) {
+            const nextImage = images.find(img => img.id !== imageSync.currentImageId);
+            if (nextImage) {
+              imageSync.showImageNow(nextImage);
+            }
+          }
+        });
+
+        state.gestureRecognizer.on('point', () => {
+          log('👆 Gesture: Point → Select', 'info');
+          showGestureIndicator('Point - Select');
+          // Flash current image as feedback
+          const activeBuffer = imageSync.activeBuffer === 'A' ? imageSync.imageA : imageSync.imageB;
+          activeBuffer.style.transform = 'scale(1.05)';
+          setTimeout(() => {
+            activeBuffer.style.transform = 'scale(1)';
+          }, 200);
+        });
+
+        state.gestureRecognizer.on('open_palm', () => {
+          log('✋ Gesture: Open Palm → Pause', 'info');
+          showGestureIndicator('Open Palm - Pause');
+          // Pause TTS narration
+          if (window.speechSynthesis.speaking) {
+            window.speechSynthesis.pause();
+            setTimeout(() => {
+              window.speechSynthesis.resume();
+            }, 2000);
+          }
+        });
+
+        state.gestureRecognizer.on('peace', () => {
+          log('✌️ Gesture: Peace → Volume Up', 'info');
+          showGestureIndicator('Peace - Volume Up');
+          // Increase volume (if using audio element)
+          log('💡 Volume control not yet implemented', 'warn');
+        });
+
+        state.gestureRecognizer.on('fist', () => {
+          log('✊ Gesture: Fist → Close', 'info');
+          showGestureIndicator('Fist - Close Session');
+          // Stop the experience
+          setTimeout(() => {
+            if (state.sessionId) {
+              stopExperience();
+            }
+          }, 1000);
+        });
+
+        // Start gesture detection
+        state.gestureRecognizer.start();
+        state.gestureEnabled = true;
+
+        log('✅ Gesture control started', 'info');
+
+      } catch (error) {
+        log(`❌ Gesture control error: ${error.message}`, 'error');
+        throw error;
+      }
+    }
+
+    async function toggleGestureControl() {
+      if (state.gestureEnabled) {
+        // Disable gestures
+        if (state.gestureRecognizer) {
+          state.gestureRecognizer.stop();
+          state.gestureRecognizer = null;
+        }
+        state.gestureEnabled = false;
+        gesturePreview.classList.remove('active');
+        toggleGestureBtn.textContent = '🤚 Enable Gestures';
+        log('⏹️ Gesture control disabled', 'info');
+      } else {
+        // Enable gestures
+        try {
+          await initializeGestureControl();
+          gesturePreview.classList.add('active');
+          toggleGestureBtn.textContent = '⏹️ Disable Gestures';
+        } catch (error) {
+          log(`❌ Failed to enable gestures: ${error.message}`, 'error');
+        }
+      }
+    }
+
     async function stopExperience() {
       try {
         stopBtn.disabled = true;
@@ -918,6 +1122,16 @@ Their influence echoes through the millennia.`,
             state.recognition.stop();
           }
           transcriptPanel.classList.remove('visible');
+        }
+
+        // Stop gesture control if running
+        if (state.gestureEnabled && state.gestureRecognizer) {
+          state.gestureRecognizer.stop();
+          state.gestureRecognizer = null;
+          state.gestureEnabled = false;
+          gesturePreview.classList.remove('active');
+          toggleGestureBtn.textContent = '🤚 Enable Gestures';
+          log('⏹️ Gesture control stopped', 'info');
         }
 
         // Stop TTS
@@ -1146,6 +1360,7 @@ Their influence echoes through the millennia.`,
     toggleLogsBtn.addEventListener('click', () => {
       logsPanel.classList.toggle('visible');
     });
+    toggleGestureBtn.addEventListener('click', toggleGestureControl);
 
     // Initialize
     log('🏛️ LiveKit Greek Civilization Kiosk - Full Integration');
@@ -1158,10 +1373,12 @@ Their influence echoes through the millennia.`,
     log('✓ Image Sync System with playout_ts');
     log('✓ Crossfade renderer (two-buffer)');
     log('✓ ImageScreener CDN warming & caching');
+    log('✓ MediaPipe gesture recognition (touchless control)');
     log('');
     log('━━━━━━━━━━━━━━━━━━━━━━━━━━━');
     log('🎤 Click "Start Listening" to ask about Greek civilization');
     log('🖼️ Images will sync automatically with AI responses!');
+    log('🤚 Click "Enable Gestures" for touchless interaction!');
   </script>
 </body>
 </html>
