@@ -1,0 +1,207 @@
+{
+  "collections": {
+    "architecture": [
+      {
+        "id": "parthenon_front",
+        "title": "Parthenon — Athens Acropolis",
+        "cdn_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/d/da/The_Parthenon_in_Athens.jpg/1280px-The_Parthenon_in_Athens.jpg",
+        "category": "architecture",
+        "era": "Classical (447-432 BCE)",
+        "description": "The iconic Parthenon temple dedicated to Athena, symbol of ancient Greek architectural achievement",
+        "resize": {
+          "width": 1920,
+          "height": 1080,
+          "fit": "inside"
+        }
+      },
+      {
+        "id": "acropolis_overview",
+        "title": "Acropolis of Athens",
+        "cdn_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/4/49/Acropolis_of_Athens_01361.JPG/1280px-Acropolis_of_Athens_01361.JPG",
+        "category": "architecture",
+        "era": "Classical (5th century BCE)",
+        "description": "The fortified citadel atop Athens containing the Parthenon and other ancient temples",
+        "resize": {
+          "width": 1920,
+          "height": 1080,
+          "fit": "inside"
+        }
+      },
+      {
+        "id": "temple_of_zeus",
+        "title": "Temple of Olympian Zeus",
+        "cdn_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/2/2b/Temple_of_Olympian_Zeus%2C_Athens_-_20070829-02.jpg/1280px-Temple_of_Olympian_Zeus%2C_Athens_-_20070829-02.jpg",
+        "category": "architecture",
+        "era": "Hellenistic (begun 6th century BCE)",
+        "description": "Colossal ruined temple dedicated to Zeus, once one of the largest in the ancient world",
+        "resize": {
+          "width": 1920,
+          "height": 1080,
+          "fit": "inside"
+        }
+      },
+      {
+        "id": "theater_epidaurus",
+        "title": "Theater of Epidaurus",
+        "cdn_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/9/9f/Theatre_of_Epidaurus.jpg/1280px-Theatre_of_Epidaurus.jpg",
+        "category": "architecture",
+        "era": "Classical (4th century BCE)",
+        "description": "Ancient Greek theater renowned for its exceptional acoustics and preservation",
+        "resize": {
+          "width": 1920,
+          "height": 1080,
+          "fit": "inside"
+        }
+      },
+      {
+        "id": "temple_of_poseidon",
+        "title": "Temple of Poseidon — Cape Sounion",
+        "cdn_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/f/f4/Cape_Sounion.jpg/1280px-Cape_Sounion.jpg",
+        "category": "architecture",
+        "era": "Classical (444 BCE)",
+        "description": "Dramatic cliffside temple overlooking the Aegean Sea, dedicated to the god Poseidon",
+        "resize": {
+          "width": 1920,
+          "height": 1080,
+          "fit": "inside"
+        }
+      }
+    ],
+    "sculpture": [
+      {
+        "id": "discus_thrower",
+        "title": "Discobolus (Discus Thrower)",
+        "cdn_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/8/88/Discus_thrower_2_century_jpg.jpg/800px-Discus_thrower_2_century_jpg.jpg",
+        "category": "sculpture",
+        "era": "Classical (5th century BCE)",
+        "description": "Iconic sculpture by Myron capturing the moment of athletic motion",
+        "resize": {
+          "width": 1080,
+          "height": 1920,
+          "fit": "inside"
+        }
+      },
+      {
+        "id": "venus_de_milo",
+        "title": "Aphrodite of Milos (Venus de Milo)",
+        "cdn_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/4/47/Aphrodite_of_Milos.jpg/800px-Aphrodite_of_Milos.jpg",
+        "category": "sculpture",
+        "era": "Hellenistic (130-100 BCE)",
+        "description": "Famous ancient Greek statue believed to depict Aphrodite, goddess of love",
+        "resize": {
+          "width": 1080,
+          "height": 1920,
+          "fit": "inside"
+        }
+      },
+      {
+        "id": "winged_victory",
+        "title": "Winged Victory of Samothrace",
+        "cdn_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/5/5f/Nike_of_Samothrake_Louvre_Ma2369_n4.jpg/800px-Nike_of_Samothrake_Louvre_Ma2369_n4.jpg",
+        "category": "sculpture",
+        "era": "Hellenistic (2nd century BCE)",
+        "description": "Magnificent marble sculpture of Nike, goddess of victory, perched on a ship's prow",
+        "resize": {
+          "width": 1080,
+          "height": 1920,
+          "fit": "inside"
+        }
+      },
+      {
+        "id": "laocoon",
+        "title": "Laocoön and His Sons",
+        "cdn_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/1/13/Laocoon_Pio-Clementino_Inv1059-1064-1067.jpg/800px-Laocoon_Pio-Clementino_Inv1059-1064-1067.jpg",
+        "category": "sculpture",
+        "era": "Hellenistic (2nd-1st century BCE)",
+        "description": "Dramatic sculpture showing the Trojan priest Laocoön and his sons being attacked by serpents",
+        "resize": {
+          "width": 1080,
+          "height": 1920,
+          "fit": "inside"
+        }
+      }
+    ],
+    "pottery": [
+      {
+        "id": "black_figure_amphora",
+        "title": "Black-Figure Amphora",
+        "cdn_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/7/7a/Exekias_Dionysos_Staatliche_Antikensammlungen_2044.jpg/800px-Exekias_Dionysos_Staatliche_Antikensammlungen_2044.jpg",
+        "category": "pottery",
+        "era": "Archaic (6th century BCE)",
+        "description": "Black-figure vase by Exekias depicting Dionysus sailing, masterpiece of Greek pottery",
+        "resize": {
+          "width": 1080,
+          "height": 1920,
+          "fit": "inside"
+        }
+      },
+      {
+        "id": "red_figure_krater",
+        "title": "Red-Figure Krater",
+        "cdn_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/3/3e/Niobid_Painter_-_Red-Figure_Calyx-Krater_-_Walters_482738_-_Side_A.jpg/800px-Niobid_Painter_-_Red-Figure_Calyx-Krater_-_Walters_482738_-_Side_A.jpg",
+        "category": "pottery",
+        "era": "Classical (5th century BCE)",
+        "description": "Red-figure vessel showing mythological scenes with sophisticated composition",
+        "resize": {
+          "width": 1080,
+          "height": 1920,
+          "fit": "inside"
+        }
+      }
+    ],
+    "daily_life": [
+      {
+        "id": "ancient_agora",
+        "title": "Ancient Agora of Athens",
+        "cdn_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/0/00/Ancient_Agora_of_Athens_2019.jpg/1280px-Ancient_Agora_of_Athens_2019.jpg",
+        "category": "daily_life",
+        "era": "Classical-Hellenistic",
+        "description": "The central marketplace and civic center of ancient Athens, heart of daily life",
+        "resize": {
+          "width": 1920,
+          "height": 1080,
+          "fit": "inside"
+        }
+      },
+      {
+        "id": "olympic_stadium",
+        "title": "Panathenaic Stadium",
+        "cdn_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/b/b6/Panathenaic_Stadium_in_Athens_-_panoramio.jpg/1280px-Panathenaic_Stadium_in_Athens_-_panoramio.jpg",
+        "category": "daily_life",
+        "era": "Classical (330 BCE)",
+        "description": "Ancient stadium hosting the Panathenaic Games, precursor to the modern Olympics",
+        "resize": {
+          "width": 1920,
+          "height": 1080,
+          "fit": "inside"
+        }
+      }
+    ]
+  },
+  "narration_sequences": {
+    "introduction": {
+      "title": "Welcome to Ancient Greece",
+      "images": ["acropolis_overview", "parthenon_front", "ancient_agora"],
+      "duration_ms": 15000,
+      "narration": "Welcome to the world of ancient Greece, a civilization that shaped Western culture through philosophy, democracy, art, and architecture."
+    },
+    "architecture_tour": {
+      "title": "Architectural Marvels",
+      "images": ["parthenon_front", "temple_of_poseidon", "theater_epidaurus", "temple_of_zeus"],
+      "duration_ms": 25000,
+      "narration": "Greek architecture featured magnificent temples with Doric, Ionic, and Corinthian columns, theaters with perfect acoustics, and structures built to honor the gods."
+    },
+    "sculpture_showcase": {
+      "title": "Classical Sculpture",
+      "images": ["discus_thrower", "venus_de_milo", "winged_victory", "laocoon"],
+      "duration_ms": 20000,
+      "narration": "Greek sculptors achieved unprecedented realism and beauty, capturing human form and emotion in marble and bronze."
+    },
+    "daily_life": {
+      "title": "Life in Ancient Athens",
+      "images": ["ancient_agora", "olympic_stadium", "black_figure_amphora"],
+      "duration_ms": 18000,
+      "narration": "Greeks gathered in the agora for commerce and debate, competed in athletic games, and celebrated with wine served in beautifully painted vessels."
+    }
+  }
+}

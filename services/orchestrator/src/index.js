@@ -56,13 +56,28 @@ async function loadImageLibrary() {
     const libraryData = await fs.readFile(libraryPath, 'utf-8');
     imageLibrary = JSON.parse(libraryData);
     console.log('✅ Image library loaded');
-    console.log(`   Architecture: ${imageLibrary.collections.architecture.length} images`);
-    console.log(`   Sculpture: ${imageLibrary.collections.sculpture.length} images`);
-    console.log(`   Pottery: ${imageLibrary.collections.pottery.length} images`);
-    console.log(`   Daily life: ${imageLibrary.collections.daily_life.length} images`);
+
+    // Count total images across all categories
+    let totalImages = 0;
+    const categoryCounts = {};
+    for (const [categoryName, images] of Object.entries(imageLibrary.collections || {})) {
+      const count = images.length;
+      totalImages += count;
+      categoryCounts[categoryName] = count;
+    }
+
+    console.log(`   Total images: ${totalImages} across ${Object.keys(imageLibrary.collections).length} categories`);
+    // Show first few categories
+    const categories = Object.entries(categoryCounts).slice(0, 5);
+    categories.forEach(([name, count]) => {
+      console.log(`   ${name}: ${count} images`);
+    });
+    if (Object.keys(categoryCounts).length > 5) {
+      console.log(`   ... and ${Object.keys(categoryCounts).length - 5} more categories`);
+    }
   } catch (error) {
     console.error('❌ Failed to load image library:', error.message);
-    imageLibrary = { collections: {}, narration_sequences: {} };
+    imageLibrary = { collections: {} };
   }
 }
 
@@ -357,7 +372,7 @@ async function sendImageControlMessage(room_name, type, imageData, playout_ts, o
 }
 
 /**
- * Select images based on conversation topic
+ * Select images based on conversation topic using keyword matching
  */
 function selectImagesForTopic(topic) {
   if (!imageLibrary || !imageLibrary.collections) {
@@ -365,20 +380,59 @@ function selectImagesForTopic(topic) {
   }
 
   const topicLower = topic.toLowerCase();
+  const topicWords = topicLower.split(/\s+/);
 
-  // Map keywords to image categories
-  if (topicLower.includes('temple') || topicLower.includes('parthenon') || topicLower.includes('architecture')) {
-    return imageLibrary.collections.architecture || [];
-  } else if (topicLower.includes('sculpture') || topicLower.includes('statue') || topicLower.includes('art')) {
-    return imageLibrary.collections.sculpture || [];
-  } else if (topicLower.includes('pottery') || topicLower.includes('vase') || topicLower.includes('ceramic')) {
-    return imageLibrary.collections.pottery || [];
-  } else if (topicLower.includes('daily') || topicLower.includes('life') || topicLower.includes('agora') || topicLower.includes('olympic')) {
-    return imageLibrary.collections.daily_life || [];
+  // Collect all images from all categories into a flat array
+  const allImages = [];
+  for (const category of Object.values(imageLibrary.collections)) {
+    allImages.push(...category);
   }
 
-  // Default: show architecture highlights
-  return imageLibrary.collections.architecture?.slice(0, 3) || [];
+  // Score each image based on keyword matches
+  const scoredImages = allImages.map(image => {
+    let score = 0;
+
+    // Check if any topic words match image keywords
+    if (image.keywords) {
+      for (const keyword of image.keywords) {
+        // Exact word match in topic
+        if (topicWords.includes(keyword.toLowerCase())) {
+          score += 10;
+        }
+        // Partial match (keyword appears anywhere in topic)
+        else if (topicLower.includes(keyword.toLowerCase())) {
+          score += 5;
+        }
+      }
+    }
+
+    // Bonus for matching category name
+    if (topicLower.includes(image.category)) {
+      score += 3;
+    }
+
+    // Bonus for matching title
+    if (image.title && topicLower.includes(image.title.toLowerCase())) {
+      score += 15;
+    }
+
+    return { image, score };
+  });
+
+  // Sort by score (highest first) and return top matches
+  const topMatches = scoredImages
+    .filter(item => item.score > 0)
+    .sort((a, b) => b.score - a.score)
+    .slice(0, 5) // Get top 5 matches
+    .map(item => item.image);
+
+  // If no matches, return random selection
+  if (topMatches.length === 0) {
+    const randomImages = allImages.sort(() => Math.random() - 0.5).slice(0, 3);
+    return randomImages;
+  }
+
+  return topMatches;
 }
 
 // ========== Conversation Flow: STT → LLM → TTS ==========
