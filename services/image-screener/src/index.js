@@ -1,281 +1,145 @@
 /**
- * Image Screener Service
- *
+ * ImageScreener Service
+ * 
  * Responsibilities:
- * - Warm CDN edge caches (HEAD/GET requests)
- * - Resize images using libvips/sharp
- * - LRU caching for frequently accessed images
- * - Return img_ready acknowledgments
+ * - Preload images and warm CDN cache
+ * - Resize images if needed
+ * - LRU cache for frequently used images
+ * - Return img_ready when images are loaded
  */
 
+require('dotenv').config();
 const express = require('express');
-const { LRUCache } = require('lru-cache');
-const axios = require('axios');
+const cors = require('cors');
+const fetch = require('node-fetch');
 const sharp = require('sharp');
-const crypto = require('crypto');
+const { LRUCache } = require('lru-cache');
 
 const app = express();
 const PORT = process.env.PORT || 3001;
-const ENABLE_RESIZE = process.env.ENABLE_RESIZE === 'true';
-const TARGET_WIDTH = parseInt(process.env.TARGET_WIDTH || '1920');
-const TARGET_HEIGHT = parseInt(process.env.TARGET_HEIGHT || '1080');
 
-// LRU cache for image metadata
+app.use(cors());
+app.use(express.json());
+
+// LRU cache for images (max 100 images, ~500MB)
 const imageCache = new LRUCache({
-  max: 500,
+  max: 100,
+  maxSize: 500 * 1024 * 1024, // 500MB
+  sizeCalculation: (value) => value.buffer.length,
   ttl: 1000 * 60 * 30, // 30 minutes
 });
 
-// Enable CORS
-app.use((req, res, next) => {
-  res.header('Access-Control-Allow-Origin', '*');
-  res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
-  res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization');
-  if (req.method === 'OPTIONS') {
-    return res.sendStatus(200);
-  }
-  next();
-});
-
-app.use(express.json());
-
-app.get('/health', (req, res) => {
-  res.json({
-    status: 'ok',
-    service: 'image-screener',
-    cached_images: imageCache.size,
-    resize_enabled: ENABLE_RESIZE
-  });
-});
+// Preload stats
+const stats = {
+  preloads: 0,
+  cache_hits: 0,
+  cache_misses: 0,
+  errors: 0
+};
 
 /**
- * POST /preload - Preload image and warm CDN
- * Body: { id, cdn_url, resize }
+ * POST /preload - Preload an image and warm CDN
+ * Body: { id, cdn_url, playout_ts, ttl_ms, resize }
  */
 app.post('/preload', async (req, res) => {
   try {
-    const { id, cdn_url, resize = false } = req.body;
+    const { id, cdn_url, playout_ts, ttl_ms, resize } = req.body;
 
     if (!id || !cdn_url) {
-      return res.status(400).json({ error: 'id and cdn_url are required' });
+      return res.status(400).json({ error: 'id and cdn_url required' });
     }
 
-    // Check if already cached
-    const cached = imageCache.get(id);
-    if (cached && cached.status === 'ready') {
-      console.log(`Image ${id} already cached`);
+    console.log(`📥 Preload request: ${id} from ${cdn_url}`);
+
+    // Check cache first
+    if (imageCache.has(id)) {
+      stats.cache_hits++;
+      console.log(`💾 Cache hit: ${id}`);
       return res.json({
         id,
-        status: 'ready',
-        cdn_url: cached.cdn_url,
-        cached: true
+        ready: true,
+        from_cache: true,
+        playout_ts,
+        cache_hits: stats.cache_hits
       });
     }
 
-    // Mark as warming
-    imageCache.set(id, {
-      id,
-      cdn_url,
-      status: 'warming',
-      started_at: Date.now()
+    stats.cache_misses++;
+    stats.preloads++;
+
+    // Fetch image from CDN
+    const fetchStart = Date.now();
+    const response = await fetch(cdn_url, {
+      headers: {
+        'User-Agent': 'ImageScreener/1.0'
+      },
+      timeout: 5000
     });
 
-    console.log(`Warming CDN for ${id}: ${cdn_url}`);
+    if (!response.ok) {
+      throw new Error(`CDN fetch failed: ${response.statusText}`);
+    }
 
-    // Warm CDN with HEAD request first
-    await axios.head(cdn_url, { timeout: 5000 });
+    const buffer = await response.buffer();
+    const fetchTime = Date.now() - fetchStart;
 
-    // If resize requested and enabled, fetch and resize
-    if (resize && ENABLE_RESIZE) {
-      console.log(`Resizing ${id} to ${TARGET_WIDTH}x${TARGET_HEIGHT}`);
+    console.log(`✅ Fetched ${id}: ${buffer.length} bytes in ${fetchTime}ms`);
 
-      const response = await axios.get(cdn_url, {
-        responseType: 'arraybuffer',
-        timeout: 10000
-      });
-
-      const resized = await sharp(response.data)
-        .resize(TARGET_WIDTH, TARGET_HEIGHT, {
-          fit: 'cover',
-          position: 'center'
+    // Resize if requested
+    let processedBuffer = buffer;
+    if (resize && (resize.width || resize.height)) {
+      const resizeStart = Date.now();
+      processedBuffer = await sharp(buffer)
+        .resize(resize.width, resize.height, {
+          fit: resize.fit || 'inside',
+          withoutEnlargement: true
         })
-        .webp({ quality: 85 })
         .toBuffer();
-
-      // Store resized image metadata
-      imageCache.set(id, {
-        id,
-        cdn_url,
-        status: 'ready',
-        warmed_at: Date.now(),
-        resized: true,
-        size: resized.length
-      });
-    } else {
-      // Just warm, don't resize
-      imageCache.set(id, {
-        id,
-        cdn_url,
-        status: 'ready',
-        warmed_at: Date.now(),
-        resized: false
-      });
+      const resizeTime = Date.now() - resizeStart;
+      console.log(`🔧 Resized ${id} in ${resizeTime}ms`);
     }
 
-    console.log(`Image ${id} ready`);
-
-    res.json({
-      id,
-      status: 'ready',
+    // Cache the image
+    imageCache.set(id, {
+      buffer: processedBuffer,
       cdn_url,
-      cached: false
+      cached_at: Date.now()
     });
-  } catch (error) {
-    console.error(`Error preloading ${req.body.id}:`, error.message);
-
-    // Mark as failed
-    if (req.body.id) {
-      imageCache.set(req.body.id, {
-        id: req.body.id,
-        cdn_url: req.body.cdn_url,
-        status: 'failed',
-        error: error.message,
-        failed_at: Date.now()
-      });
-    }
-
-    res.status(500).json({
-      error: 'Failed to preload image',
-      message: error.message
-    });
-  }
-});
-
-/**
- * POST /batch_preload - Batch preload multiple images
- * Body: { images: [{ id, cdn_url, resize }] }
- */
-app.post('/batch_preload', async (req, res) => {
-  try {
-    const { images } = req.body;
-
-    if (!Array.isArray(images)) {
-      return res.status(400).json({ error: 'images array is required' });
-    }
-
-    console.log(`Batch preloading ${images.length} images`);
-
-    // Process all images in parallel
-    const results = await Promise.allSettled(
-      images.map(async (img) => {
-        const { id, cdn_url, resize = false } = img;
-
-        // Check cache first
-        const cached = imageCache.get(id);
-        if (cached && cached.status === 'ready') {
-          return { id, status: 'ready', cached: true };
-        }
-
-        // Mark as warming
-        imageCache.set(id, {
-          id,
-          cdn_url,
-          status: 'warming',
-          started_at: Date.now()
-        });
-
-        // Warm CDN
-        await axios.head(cdn_url, { timeout: 5000 });
-
-        // Optionally resize
-        if (resize && ENABLE_RESIZE) {
-          const response = await axios.get(cdn_url, {
-            responseType: 'arraybuffer',
-            timeout: 10000
-          });
-
-          await sharp(response.data)
-            .resize(TARGET_WIDTH, TARGET_HEIGHT, {
-              fit: 'cover',
-              position: 'center'
-            })
-            .webp({ quality: 85 })
-            .toBuffer();
-        }
-
-        // Mark as ready
-        imageCache.set(id, {
-          id,
-          cdn_url,
-          status: 'ready',
-          warmed_at: Date.now(),
-          resized: resize && ENABLE_RESIZE
-        });
-
-        return { id, status: 'ready', cached: false };
-      })
-    );
-
-    const successful = results.filter(r => r.status === 'fulfilled').map(r => r.value);
-    const failed = results.filter(r => r.status === 'rejected').map(r => ({
-      error: r.reason.message
-    }));
-
-    console.log(`Batch complete: ${successful.length} successful, ${failed.length} failed`);
 
     res.json({
-      total: images.length,
-      successful: successful.length,
-      failed: failed.length,
-      results: successful
-    });
-  } catch (error) {
-    console.error('Error in batch preload:', error);
-    res.status(500).json({ error: 'Failed to batch preload images' });
-  }
-});
-
-/**
- * GET /ready/:id - Check if image is ready
- */
-app.get('/ready/:id', (req, res) => {
-  const { id } = req.params;
-  const cached = imageCache.get(id);
-
-  if (!cached) {
-    return res.json({
       id,
-      status: 'not_found',
+      ready: true,
+      from_cache: false,
+      playout_ts,
+      fetch_time_ms: fetchTime,
+      size_bytes: processedBuffer.length
+    });
+
+  } catch (error) {
+    stats.errors++;
+    console.error('Preload error:', error);
+    res.status(500).json({ 
+      error: error.message,
+      id: req.body.id,
       ready: false
     });
   }
-
-  res.json({
-    id,
-    status: cached.status,
-    ready: cached.status === 'ready',
-    cdn_url: cached.cdn_url,
-    resized: cached.resized,
-    warmed_at: cached.warmed_at
-  });
 });
 
 /**
- * GET /cache/stats - Get cache statistics
+ * GET /image/:id - Get cached image
  */
-app.get('/cache/stats', (req, res) => {
-  const allEntries = Array.from(imageCache.entries());
+app.get('/image/:id', (req, res) => {
+  const { id } = req.params;
+  
+  const cached = imageCache.get(id);
+  if (!cached) {
+    return res.status(404).json({ error: 'Image not in cache' });
+  }
 
-  const stats = {
-    total: imageCache.size,
-    ready: allEntries.filter(([_, v]) => v.status === 'ready').length,
-    warming: allEntries.filter(([_, v]) => v.status === 'warming').length,
-    failed: allEntries.filter(([_, v]) => v.status === 'failed').length,
-    max_size: imageCache.max,
-    ttl_ms: imageCache.ttl
-  };
-
-  res.json(stats);
+  res.set('Content-Type', 'image/webp');
+  res.set('Cache-Control', 'public, max-age=3600');
+  res.send(cached.buffer);
 });
 
 /**
@@ -283,35 +147,45 @@ app.get('/cache/stats', (req, res) => {
  */
 app.delete('/cache/:id', (req, res) => {
   const { id } = req.params;
-  const existed = imageCache.has(id);
-
   imageCache.delete(id);
-
-  res.json({
-    id,
-    deleted: existed
-  });
+  console.log(`🗑️ Removed ${id} from cache`);
+  res.json({ success: true });
 });
 
 /**
- * DELETE /cache - Clear entire cache
+ * POST /flush - Flush session cache
  */
-app.delete('/cache', (req, res) => {
-  const count = imageCache.size;
-  imageCache.clear();
+app.post('/flush', (req, res) => {
+  const { session_id } = req.body;
+  
+  if (session_id) {
+    // Clear images for specific session (if we tracked session IDs)
+    console.log(`🧹 Flush request for session: ${session_id}`);
+  } else {
+    imageCache.clear();
+    console.log('🧹 Cache cleared');
+  }
 
-  console.log(`Cache cleared: ${count} entries removed`);
+  res.json({ success: true, cache_size: imageCache.size });
+});
 
+/**
+ * GET /health - Health check with stats
+ */
+app.get('/health', (req, res) => {
   res.json({
-    cleared: true,
-    count
+    status: 'ok',
+    service: 'image-screener',
+    cache_size: imageCache.size,
+    cache_max: imageCache.max,
+    stats: stats
   });
 });
 
+// Start server
 app.listen(PORT, () => {
-  console.log(`Image Screener service listening on port ${PORT}`);
-  console.log(`Resize: ${ENABLE_RESIZE ? 'enabled' : 'disabled'}`);
-  if (ENABLE_RESIZE) {
-    console.log(`Target dimensions: ${TARGET_WIDTH}x${TARGET_HEIGHT}`);
-  }
+  console.log(`\n🖼️ ImageScreener Service`);
+  console.log(`📡 Listening on port ${PORT}`);
+  console.log(`💾 Cache: max ${imageCache.max} images`);
+  console.log(`⚡ Ready to preload and warm CDN\n`);
 });

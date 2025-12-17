@@ -18,6 +18,9 @@ const { AccessToken, RoomServiceClient, DataPacket_Kind } = require('livekit-ser
 const crypto = require('crypto');
 const WebSocket = require('ws');
 const OpusScript = require('opusscript');
+const fetch = require('node-fetch');
+const fs = require('fs').promises;
+const path = require('path');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -31,6 +34,7 @@ const LIVEKIT_API_SECRET = process.env.LIVEKIT_API_SECRET;
 const LIVEKIT_URL = process.env.LIVEKIT_URL;
 const TTS_SERVICE_URL = process.env.TTS_SERVICE_URL || 'ws://localhost:3002/ws';
 const LLM_SERVICE_URL = process.env.LLM_SERVICE_URL || 'http://localhost:3003';
+const IMAGE_SCREENER_URL = process.env.IMAGE_SCREENER_URL || 'http://localhost:3001';
 
 if (!LIVEKIT_API_KEY || !LIVEKIT_API_SECRET || !LIVEKIT_URL) {
   console.error('Missing required environment variables: LIVEKIT_API_KEY, LIVEKIT_API_SECRET, LIVEKIT_URL');
@@ -41,6 +45,26 @@ app.use(express.json());
 
 // In-memory session store (use Redis in production)
 const sessions = new Map();
+
+// Image library for Greek civilization
+let imageLibrary = null;
+
+// Load image library on startup
+async function loadImageLibrary() {
+  try {
+    const libraryPath = path.join(__dirname, '..', '..', '..', 'data', 'greek-images.json');
+    const libraryData = await fs.readFile(libraryPath, 'utf-8');
+    imageLibrary = JSON.parse(libraryData);
+    console.log('✅ Image library loaded');
+    console.log(`   Architecture: ${imageLibrary.collections.architecture.length} images`);
+    console.log(`   Sculpture: ${imageLibrary.collections.sculpture.length} images`);
+    console.log(`   Pottery: ${imageLibrary.collections.pottery.length} images`);
+    console.log(`   Daily life: ${imageLibrary.collections.daily_life.length} images`);
+  } catch (error) {
+    console.error('❌ Failed to load image library:', error.message);
+    imageLibrary = { collections: {}, narration_sequences: {} };
+  }
+}
 
 // Session timeout configuration
 const SESSION_TIMEOUT_MS = parseInt(process.env.SESSION_TIMEOUT_MS || '600000'); // Default: 10 minutes
@@ -270,12 +294,99 @@ app.get('/sessions', (req, res) => {
   res.json({ sessions: activeSessions, count: activeSessions.length });
 });
 
+// ========== Image Sync System ==========
+
+/**
+ * Preload image via ImageScreener service
+ */
+async function preloadImage(imageData, playout_ts) {
+  try {
+    const response = await fetch(`${IMAGE_SCREENER_URL}/preload`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        id: imageData.id,
+        cdn_url: imageData.cdn_url,
+        playout_ts,
+        ttl_ms: 30000,
+        resize: imageData.resize
+      })
+    });
+
+    if (!response.ok) {
+      throw new Error(`ImageScreener error: ${response.statusText}`);
+    }
+
+    const result = await response.json();
+    console.log(`🖼️ Preloaded image: ${imageData.id} (from_cache: ${result.from_cache})`);
+    return result;
+  } catch (error) {
+    console.error(`Failed to preload image ${imageData.id}:`, error.message);
+    return null;
+  }
+}
+
+/**
+ * Send image control message via LiveKit DataChannel
+ */
+async function sendImageControlMessage(room_name, type, imageData, playout_ts, options = {}) {
+  try {
+    const message = {
+      type,
+      id: imageData.id,
+      cdn_url: imageData.cdn_url,
+      playout_ts,
+      caption: imageData.title || options.caption,
+      transition: options.transition || 'crossfade',
+      duration_ms: options.duration_ms || 400,
+      ttl_ms: options.ttl_ms || 8000
+    };
+
+    const payload = new Uint8Array(Buffer.from(JSON.stringify(message)));
+
+    await roomService.sendData(room_name, payload, DataPacket_Kind.RELIABLE, {
+      destinationIdentities: []
+    });
+
+    console.log(`📡 Sent ${type}: ${imageData.id} at playout_ts ${playout_ts}`);
+    return true;
+  } catch (error) {
+    console.error(`Failed to send ${type} message:`, error.message);
+    return false;
+  }
+}
+
+/**
+ * Select images based on conversation topic
+ */
+function selectImagesForTopic(topic) {
+  if (!imageLibrary || !imageLibrary.collections) {
+    return [];
+  }
+
+  const topicLower = topic.toLowerCase();
+
+  // Map keywords to image categories
+  if (topicLower.includes('temple') || topicLower.includes('parthenon') || topicLower.includes('architecture')) {
+    return imageLibrary.collections.architecture || [];
+  } else if (topicLower.includes('sculpture') || topicLower.includes('statue') || topicLower.includes('art')) {
+    return imageLibrary.collections.sculpture || [];
+  } else if (topicLower.includes('pottery') || topicLower.includes('vase') || topicLower.includes('ceramic')) {
+    return imageLibrary.collections.pottery || [];
+  } else if (topicLower.includes('daily') || topicLower.includes('life') || topicLower.includes('agora') || topicLower.includes('olympic')) {
+    return imageLibrary.collections.daily_life || [];
+  }
+
+  // Default: show architecture highlights
+  return imageLibrary.collections.architecture?.slice(0, 3) || [];
+}
+
 // ========== Conversation Flow: STT → LLM → TTS ==========
 
 /**
  * POST /converse - Handle user message through full conversation pipeline
  * Body: { session_id, message }
- * Flow: User message → LLM → TTS → LiveKit audio
+ * Flow: User message → LLM → TTS → LiveKit audio + synchronized images
  */
 app.post('/converse', async (req, res) => {
   try {
@@ -314,7 +425,56 @@ app.post('/converse', async (req, res) => {
     const { response: llmText } = await llmResponse.json();
     console.log(`🤖 [${session_id}] Assistant response: "${llmText}"`);
 
-    // Step 2: Send LLM response to TTS and stream to LiveKit
+    // Step 2: Select and preload relevant images based on conversation topic
+    const relevantImages = selectImagesForTopic(message);
+    console.log(`🖼️ Selected ${relevantImages.length} images for topic: "${message}"`);
+
+    // Step 3: Estimate TTS duration and calculate playout timestamps
+    // Rough estimate: 150 words per minute = 2.5 words per second = 0.4 seconds per word
+    const wordCount = llmText.split(/\s+/).length;
+    const estimatedDurationMs = Math.max(wordCount * 400, 3000); // At least 3 seconds
+    const currentTime = Date.now();
+    const speechStartTime = currentTime + 1000; // Start speech in 1 second
+
+    // Step 4: Preload images and send control messages
+    if (relevantImages.length > 0) {
+      // Calculate timing for each image based on speech duration
+      const imageDurationMs = Math.floor(estimatedDurationMs / relevantImages.length);
+
+      for (let i = 0; i < Math.min(relevantImages.length, 3); i++) {
+        const image = relevantImages[i];
+        const imagePlayoutTime = speechStartTime + (i * imageDurationMs);
+
+        // Preload image via ImageScreener
+        await preloadImage(image, imagePlayoutTime);
+
+        // Send img_preload message (tells frontend to prepare the image)
+        await sendImageControlMessage(
+          session.room_name,
+          'img_preload',
+          image,
+          imagePlayoutTime,
+          { ttl_ms: imageDurationMs + 2000 }
+        );
+
+        // Send img_show message (tells frontend when to display it)
+        await sendImageControlMessage(
+          session.room_name,
+          'img_show',
+          image,
+          imagePlayoutTime,
+          {
+            transition: 'crossfade',
+            duration_ms: 400,
+            ttl_ms: imageDurationMs
+          }
+        );
+      }
+
+      console.log(`✅ Preloaded and scheduled ${Math.min(relevantImages.length, 3)} images`);
+    }
+
+    // Step 5: Send LLM response to TTS and stream to LiveKit
     // Start TTS streaming in background
     streamTextToLiveKit(session, llmText);
 
@@ -323,7 +483,9 @@ app.post('/converse', async (req, res) => {
       session_id,
       user_message: message,
       assistant_response: llmText,
-      status: 'streaming_audio'
+      status: 'streaming_audio',
+      images_scheduled: Math.min(relevantImages.length, 3),
+      estimated_duration_ms: estimatedDurationMs
     });
 
   } catch (error) {
@@ -612,8 +774,19 @@ async function streamTTSToLiveKit(session, topic) {
   }
 }
 
-app.listen(PORT, () => {
-  console.log(`Orchestrator service listening on port ${PORT}`);
-  console.log(`LiveKit URL: ${LIVEKIT_URL}`);
-  console.log(`TTS Service: ${TTS_SERVICE_URL}`);
-});
+// Start server with image library loaded
+async function start() {
+  await loadImageLibrary();
+
+  app.listen(PORT, () => {
+    console.log(`\n🎯 Orchestrator Service`);
+    console.log(`📡 Listening on port ${PORT}`);
+    console.log(`🎙️ LiveKit URL: ${LIVEKIT_URL}`);
+    console.log(`🔊 TTS Service: ${TTS_SERVICE_URL}`);
+    console.log(`🧠 LLM Service: ${LLM_SERVICE_URL}`);
+    console.log(`🖼️ ImageScreener: ${IMAGE_SCREENER_URL}`);
+    console.log(`\n✅ Ready for conversational AI with synchronized images\n`);
+  });
+}
+
+start();

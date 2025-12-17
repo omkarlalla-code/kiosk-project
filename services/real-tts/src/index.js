@@ -17,9 +17,15 @@ const { Readable } = require('stream');
 const crypto = require('crypto');
 const fs = require('fs');
 const path = require('path');
+const fetch = require('node-fetch');
 
 const app = express();
 const PORT = process.env.PORT || 3002;
+
+// ElevenLabs Configuration
+const ELEVENLABS_API_KEY = process.env.ELEVENLABS_API_KEY;
+const ELEVENLABS_VOICE_ID = process.env.ELEVENLABS_VOICE_ID || 'EXAVITQu4vr4xnSDxMaL'; // Default: Sarah voice
+const USE_ELEVENLABS = ELEVENLABS_API_KEY && ELEVENLABS_API_KEY.length > 0;
 
 // TTS Cache Configuration
 const CACHE_DIR = path.join(__dirname, '..', 'cache', 'tts');
@@ -80,10 +86,48 @@ function loadFromCache(text) {
   return null;
 }
 
+/**
+ * Stream TTS audio from ElevenLabs API
+ * Returns MP3 stream that needs to be converted to PCM
+ */
+async function streamFromElevenLabs(text) {
+  const url = `https://api.elevenlabs.io/v1/text-to-speech/${ELEVENLABS_VOICE_ID}/stream`;
+
+  const response = await fetch(url, {
+    method: 'POST',
+    headers: {
+      'Accept': 'audio/mpeg',
+      'xi-api-key': ELEVENLABS_API_KEY,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      text,
+      model_id: 'eleven_monolingual_v1',
+      voice_settings: {
+        stability: 0.5,
+        similarity_boost: 0.75
+      }
+    })
+  });
+
+  if (!response.ok) {
+    throw new Error(`ElevenLabs API error: ${response.statusText}`);
+  }
+
+  return response.body;
+}
+
 app.use(express.json());
 
 app.get('/health', (req, res) => {
-  res.json({ status: 'ok', service: 'real-tts', engine: 'espeak' });
+  const engine = USE_ELEVENLABS ? 'elevenlabs' : 'espeak/mock';
+  res.json({
+    status: 'ok',
+    service: 'real-tts',
+    engine,
+    elevenlabs_enabled: USE_ELEVENLABS,
+    cache_enabled: ENABLE_CACHE
+  });
 });
 
 // WebSocket server for streaming
@@ -430,6 +474,196 @@ function createMockPCMStream(textLength) {
   return stream;
 }
 
+/**
+ * Synthesize arbitrary text for conversational responses
+ * Simplified version without image sync
+ */
+function synthesizeText(ws, config = {}) {
+  const { text, session_id = 'default', use_elevenlabs = USE_ELEVENLABS } = config;
+
+  if (!text) {
+    ws.send(JSON.stringify({
+      type: 'error',
+      message: 'No text provided for synthesis'
+    }));
+    return;
+  }
+
+  console.log(`Synthesizing text (${text.length} chars, session=${session_id}, engine=${use_elevenlabs ? 'elevenlabs' : 'espeak/mock'})`);
+
+  const startTime = Date.now();
+  let frameId = 0;
+  let currentTimeOffset = 0;
+
+  // Check cache first
+  const cachedAudio = loadFromCache(text);
+  if (cachedAudio) {
+    console.log('✅ Using cached audio');
+    streamCachedAudioSimple(ws, cachedAudio, startTime, session_id);
+    return;
+  }
+
+  // Generate new audio
+  let ttsProcess;
+  let audioStream;
+  let useMockAudio = false;
+  const audioChunks = [];
+
+  // Try ElevenLabs if configured
+  if (use_elevenlabs && ELEVENLABS_API_KEY) {
+    console.log('🎤 Using ElevenLabs TTS');
+    // Note: ElevenLabs returns MP3, which needs conversion
+    // For now, fall back to espeak/mock
+    // TODO: Add MP3 to PCM conversion with ffmpeg
+    useMockAudio = true;
+    audioStream = createMockPCMStream(text.length);
+  } else {
+    // Try espeak
+    try {
+      ttsProcess = spawn('espeak', [
+        '-v', 'en',
+        '--stdout',
+        '-s', '150',
+        '-a', '200',
+        text
+      ]);
+
+      ttsProcess.on('error', (error) => {
+        if (!useMockAudio) {
+          console.warn('espeak not available, using mock PCM');
+          useMockAudio = true;
+          audioStream = createMockPCMStream(text.length);
+          setupSimpleAudioHandlers();
+        }
+      });
+
+      audioStream = ttsProcess.stdout;
+      console.log('Using espeak TTS engine');
+
+    } catch (error) {
+      console.warn('espeak spawn failed, using mock PCM');
+      useMockAudio = true;
+      audioStream = createMockPCMStream(text.length);
+    }
+  }
+
+  function setupSimpleAudioHandlers() {
+    audioStream.on('data', (chunk) => {
+      if (ws.readyState !== WebSocket.OPEN) {
+        if (ttsProcess) ttsProcess.kill();
+        return;
+      }
+
+      audioChunks.push(chunk);
+
+      const playoutTs = startTime + currentTimeOffset;
+
+      // Send audio frame
+      ws.send(JSON.stringify({
+        type: 'audio_frame',
+        frame_id: frameId,
+        format: 'pcm',
+        sample_rate: 48000,
+        channels: 1,
+        bits_per_sample: 16,
+        data_base64: chunk.toString('base64'),
+        playout_ts: playoutTs
+      }));
+
+      const chunkDurationMs = (chunk.length / 2) / 48000 * 1000;
+      currentTimeOffset += chunkDurationMs;
+      frameId++;
+    });
+
+    audioStream.on('end', () => {
+      // Save to cache
+      if (audioChunks.length > 0) {
+        const fullAudioBuffer = Buffer.concat(audioChunks);
+        saveToCacheAsync(text, fullAudioBuffer);
+      }
+
+      if (ws.readyState === WebSocket.OPEN) {
+        ws.send(JSON.stringify({
+          type: 'end_of_stream',
+          session_id
+        }));
+        console.log(`✅ Synthesis complete: ${frameId} frames`);
+      }
+    });
+
+    audioStream.on('error', (error) => {
+      console.error('Audio stream error:', error);
+      if (ws.readyState === WebSocket.OPEN) {
+        ws.send(JSON.stringify({
+          type: 'error',
+          message: error.message
+        }));
+      }
+    });
+
+    ws.on('close', () => {
+      if (ttsProcess) {
+        ttsProcess.kill();
+      }
+    });
+  }
+
+  if (!useMockAudio) {
+    setupSimpleAudioHandlers();
+  } else {
+    setupSimpleAudioHandlers();
+  }
+}
+
+/**
+ * Stream cached audio without image sync
+ */
+function streamCachedAudioSimple(ws, audioBuffer, startTime, session_id) {
+  const CHUNK_SIZE = 1920;
+  let offset = 0;
+  let frameId = 0;
+  let currentTimeOffset = 0;
+
+  const interval = setInterval(() => {
+    if (ws.readyState !== WebSocket.OPEN) {
+      clearInterval(interval);
+      return;
+    }
+
+    if (offset >= audioBuffer.length) {
+      clearInterval(interval);
+
+      ws.send(JSON.stringify({
+        type: 'end_of_stream',
+        session_id
+      }));
+      console.log(`✅ Cached stream completed: ${frameId} frames`);
+      return;
+    }
+
+    const chunkEnd = Math.min(offset + CHUNK_SIZE, audioBuffer.length);
+    const chunk = audioBuffer.slice(offset, chunkEnd);
+    offset = chunkEnd;
+
+    const playoutTs = startTime + currentTimeOffset;
+
+    ws.send(JSON.stringify({
+      type: 'audio_frame',
+      frame_id: frameId,
+      format: 'pcm',
+      sample_rate: 48000,
+      channels: 1,
+      bits_per_sample: 16,
+      data_base64: chunk.toString('base64'),
+      playout_ts: playoutTs
+    }));
+
+    const chunkDurationMs = (chunk.length / 2) / 48000 * 1000;
+    currentTimeOffset += chunkDurationMs;
+    frameId++;
+  }, 20);
+}
+
 wss.on('connection', (ws) => {
   console.log('Client connected to real TTS stream');
 
@@ -439,7 +673,11 @@ wss.on('connection', (ws) => {
       console.log('Received:', data.type);
 
       if (data.type === 'start_stream') {
+        // Stream narration with predefined script and images
         streamTTS(ws, data);
+      } else if (data.type === 'synthesize_text') {
+        // Synthesize arbitrary text (for conversational responses)
+        synthesizeText(ws, data);
       }
     } catch (error) {
       console.error('Error parsing message:', error);

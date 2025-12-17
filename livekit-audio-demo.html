@@ -554,6 +554,37 @@ Their influence echoes through the millennia.`,
 
         room.on(LivekitClient.RoomEvent.AudioPlaybackStatusChanged, () => {
           log('🔊 Audio playback status changed');
+          imageSync.initAudioClock();
+        });
+
+        // Handle DataChannel messages for image sync
+        room.on(LivekitClient.RoomEvent.DataReceived, async (payload, participant) => {
+          try {
+            const decoder = new TextDecoder();
+            const messageStr = decoder.decode(payload);
+            const message = JSON.parse(messageStr);
+
+            log(`📬 DataChannel: ${message.type}`, 'info');
+
+            switch (message.type) {
+              case 'img_preload':
+                await imageSync.handlePreload(message);
+                break;
+
+              case 'img_show':
+                imageSync.handleShow(message);
+                break;
+
+              case 'end_of_stream':
+                log('🏁 End of stream received', 'info');
+                break;
+
+              default:
+                log(`Unknown message type: ${message.type}`, 'warn');
+            }
+          } catch (error) {
+            log(`❌ DataChannel error: ${error.message}`, 'error');
+          }
         });
 
         // Connect
@@ -914,6 +945,9 @@ Their influence echoes through the millennia.`,
           });
         }
 
+        // Reset image sync system
+        imageSync.reset();
+
         // Reset state
         state = {
           room: null,
@@ -940,6 +974,172 @@ Their influence echoes through the millennia.`,
       }
     }
 
+    // ========== Image Sync System with Audio Clock Mapping ==========
+
+    class ImageSyncSystem {
+      constructor() {
+        this.imageQueue = new Map(); // id -> { image_data, playout_ts, preloaded }
+        this.currentImageId = null;
+        this.nextImageId = null;
+        this.audioClockOffset = null; // Maps performance.now() to audio timeline
+        this.scheduledTransitions = [];
+
+        // Create two image buffers for crossfade
+        this.imageA = document.getElementById('currentImage');
+        this.imageB = this.createSecondBuffer();
+        this.activeBuffer = 'A';
+      }
+
+      createSecondBuffer() {
+        const imgB = document.createElement('img');
+        imgB.id = 'nextImage';
+        imgB.style.cssText = `
+          position: absolute;
+          top: 0;
+          left: 0;
+          width: 100%;
+          height: 100%;
+          object-fit: contain;
+          opacity: 0;
+          transition: opacity 400ms ease-in-out;
+        `;
+        document.getElementById('imageDisplay').appendChild(imgB);
+        return imgB;
+      }
+
+      // Initialize audio clock when first audio packet received
+      initAudioClock() {
+        if (!this.audioClockOffset) {
+          this.audioClockOffset = performance.now();
+          log('🕐 Audio clock initialized', 'info');
+        }
+      }
+
+      // Map playout_ts to local time
+      getLocalTime(playout_ts) {
+        if (!this.audioClockOffset) {
+          return null;
+        }
+        // For now, use simple offset mapping
+        // In production, sync with actual audio playback position
+        return this.audioClockOffset + (playout_ts - Date.now());
+      }
+
+      // Handle img_preload message from DataChannel
+      async handlePreload(message) {
+        const { id, cdn_url, playout_ts, ttl_ms } = message;
+
+        log(`🖼️ Preload: ${id} (playout in ${playout_ts - Date.now()}ms)`, 'info');
+
+        // Preload the image
+        const img = new Image();
+        img.crossOrigin = 'anonymous';
+
+        return new Promise((resolve) => {
+          img.onload = () => {
+            this.imageQueue.set(id, {
+              id,
+              cdn_url,
+              playout_ts,
+              ttl_ms,
+              image: img,
+              preloaded: true,
+              caption: message.caption || '',
+              credit: message.credit || ''
+            });
+
+            log(`✅ Image preloaded: ${id}`, 'info');
+            resolve(true);
+          };
+
+          img.onerror = () => {
+            log(`❌ Failed to load: ${id}`, 'error');
+            resolve(false);
+          };
+
+          img.src = cdn_url;
+        });
+      }
+
+      // Handle img_show message from DataChannel
+      handleShow(message) {
+        const { id, playout_ts, transition, duration_ms } = message;
+
+        const imageData = this.imageQueue.get(id);
+        if (!imageData) {
+          log(`❌ Image not preloaded: ${id}`, 'error');
+          return;
+        }
+
+        // Calculate time until show
+        const now = Date.now();
+        const delayMs = Math.max(0, playout_ts - now);
+
+        log(`📅 Scheduled ${id} to show in ${delayMs}ms`, 'info');
+
+        // Schedule the transition
+        const timerId = setTimeout(() => {
+          this.showImageNow(imageData, transition, duration_ms);
+        }, delayMs);
+
+        this.scheduledTransitions.push({ id, timerId });
+      }
+
+      // Show image immediately with crossfade
+      showImageNow(imageData, transition = 'crossfade', duration_ms = 400) {
+        const { id, image, caption, credit } = imageData;
+
+        log(`🎨 Showing: ${id}`, 'info');
+
+        // Get inactive buffer
+        const nextBuffer = this.activeBuffer === 'A' ? this.imageB : this.imageA;
+        const currentBuffer = this.activeBuffer === 'A' ? this.imageA : this.imageB;
+
+        // Load image into inactive buffer
+        nextBuffer.src = image.src;
+        nextBuffer.style.transition = `opacity ${duration_ms}ms ease-in-out`;
+
+        // Update caption
+        const captionEl = document.getElementById('caption');
+        if (caption) {
+          captionText.textContent = caption;
+          captionCredit.textContent = credit || '';
+          captionEl.classList.add('visible');
+        }
+
+        // Crossfade: show next, hide current
+        nextBuffer.style.opacity = '1';
+        currentBuffer.style.opacity = '0';
+
+        // Swap active buffer
+        this.activeBuffer = this.activeBuffer === 'A' ? 'B' : 'A';
+        this.currentImageId = id;
+
+        // Update stats
+        state.imagesShown = this.imageQueue.size;
+        updateStats();
+      }
+
+      // Clear all scheduled transitions
+      clearScheduled() {
+        this.scheduledTransitions.forEach(({ timerId }) => clearTimeout(timerId));
+        this.scheduledTransitions = [];
+      }
+
+      // Reset system
+      reset() {
+        this.clearScheduled();
+        this.imageQueue.clear();
+        this.currentImageId = null;
+        this.audioClockOffset = null;
+        this.imageA.style.opacity = '0';
+        this.imageB.style.opacity = '0';
+      }
+    }
+
+    // Create image sync instance
+    const imageSync = new ImageSyncSystem();
+
     startBtn.addEventListener('click', startExperience);
     stopBtn.addEventListener('click', stopExperience);
     micBtn.addEventListener('click', toggleSTT);
@@ -948,19 +1148,20 @@ Their influence echoes through the millennia.`,
     });
 
     // Initialize
-    log('🏛️ LiveKit Greek Civilization Demo + STT');
-    log('📡 This demo uses LiveKit WebRTC');
-    log('🎙️ Audio will be published through LiveKit');
-    log('🎤 Speech-to-Text now available!');
+    log('🏛️ LiveKit Greek Civilization Kiosk - Full Integration');
     log('━━━━━━━━━━━━━━━━━━━━━━━━━━━');
     log('');
-    log('✓ Uses browser TTS for narration');
-    log('✓ Publishes audio track to LiveKit');
-    log('✓ Real LiveKit WebRTC connection');
-    log('✓ Images synchronized with speech');
-    log('✓ Web Speech API for STT');
+    log('✓ LiveKit WebRTC with DataChannel');
+    log('✓ Groq LLM (Llama 3.3 70B) via orchestrator');
+    log('✓ Speech-to-Text (Web Speech API)');
+    log('✓ Text-to-Speech (Browser TTS)');
+    log('✓ Image Sync System with playout_ts');
+    log('✓ Crossfade renderer (two-buffer)');
+    log('✓ ImageScreener CDN warming & caching');
     log('');
-    log('Click "Start" for narration, "🎤 Start Listening" for STT! 🎬');
+    log('━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+    log('🎤 Click "Start Listening" to ask about Greek civilization');
+    log('🖼️ Images will sync automatically with AI responses!');
   </script>
 </body>
 </html>
