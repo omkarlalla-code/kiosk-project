@@ -10,8 +10,8 @@ const server = http.createServer((req, res) => {
     filePath = '/livekit-audio-demo.html';
   }
 
-  // Resolve to absolute path
-  filePath = path.join(__dirname, filePath);
+  // Serve from public directory
+  filePath = path.join(__dirname, 'public', filePath);
 
   const extname = String(path.extname(filePath)).toLowerCase();
   const mimeTypes = {

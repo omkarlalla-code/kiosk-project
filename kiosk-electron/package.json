@@ -1,0 +1,37 @@
+{
+  "name": "greek-civilization-kiosk",
+  "version": "1.0.0",
+  "description": "Greek Civilization Museum Kiosk - Full-screen interactive experience",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "dev": "electron . --enable-logging",
+    "build": "electron-builder",
+    "build:linux": "electron-builder --linux"
+  },
+  "keywords": ["kiosk", "electron", "museum", "greek"],
+  "author": "Your Name",
+  "license": "MIT",
+  "devDependencies": {
+    "electron": "^28.0.0",
+    "electron-builder": "^24.9.1"
+  },
+  "dependencies": {
+    "livekit-client": "^2.0.0"
+  },
+  "build": {
+    "appId": "com.kiosk.greek-civilization",
+    "productName": "Greek Civilization Kiosk",
+    "linux": {
+      "target": ["AppImage", "deb"],
+      "category": "Education",
+      "executableName": "greek-kiosk"
+    },
+    "files": [
+      "main.js",
+      "preload.js",
+      "renderer/**/*",
+      "assets/**/*"
+    ]
+  }
+}

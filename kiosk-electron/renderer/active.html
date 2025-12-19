@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Active - Greek Civilization Kiosk</title>
+  <link rel="stylesheet" href="css/kiosk.css">
+</head>
+<body>
+  <div class="fullscreen active-container">
+    <!-- Session Timer -->
+    <div id="sessionTimer" class="session-timer">0:00</div>
+
+    <!-- Top 70% - Image Display -->
+    <div class="image-display">
+      <!-- Two-buffer system for crossfade -->
+      <img id="imageBuffer1" class="main-image" alt="Greek Civilization">
+      <img id="imageBuffer2" class="main-image" alt="Greek Civilization">
+      <div id="imageCaption" class="image-caption"></div>
+    </div>
+
+    <!-- Bottom 30% - Interaction Panel -->
+    <div class="interaction-panel">
+      <!-- STT Display -->
+      <div class="stt-display">
+        <div class="stt-label">Listening...</div>
+        <div class="stt-text">
+          <span id="sttFinal"></span>
+          <span id="sttInterim" class="stt-interim"></span>
+        </div>
+      </div>
+
+      <!-- Suggested Prompts -->
+      <div class="suggested-prompts">
+        <div class="prompt-chip">Ask about the Parthenon</div>
+        <div class="prompt-chip">Tell me about Greek gods</div>
+        <div class="prompt-chip">What is democracy?</div>
+        <div class="prompt-chip">Show me ancient art</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- LiveKit Client SDK -->
+  <script src="../../../public/js/livekit-client.umd.js"></script>
+  <script src="js/active.js"></script>
+</body>
+</html>

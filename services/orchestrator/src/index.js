@@ -573,29 +573,37 @@ app.post('/converse', async (req, res) => {
         parsedLlmData = llmData.response;
     }
 
-    const { speech_response: llmText, timeline_events: timelineEvents } = parsedLlmData;
+    const { speech_response: llmText, timeline_events: timelineEvents, end_chat: endChat } = parsedLlmData;
 
     console.log(`🤖 [${session_id}] Assistant response: "${llmText}"`);
+    if (endChat) {
+      console.log(`🔚 [${session_id}] End chat signal from LLM`);
+    }
 
     // Step 2 & 3: Get TTS audio from the new endpoint
     let audioBase64 = '';
+    let ttsError = null;
     try {
       // Convert WebSocket URL to HTTP and remove /ws path if present
       const ttsHttpUrl = TTS_SERVICE_URL.replace('ws://', 'http://').replace(/\/ws$/, '');
       const ttsResponse = await fetch(`${ttsHttpUrl}/synthesize`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ text: llmText })
+        body: JSON.stringify({ text: llmText }),
+        timeout: 10000 // 10 second timeout
       });
+
       if (ttsResponse.ok) {
         const audioBuffer = await ttsResponse.buffer();
         audioBase64 = audioBuffer.toString('base64');
         console.log(`🎤 Fetched TTS audio: ${(audioBase64.length / 1024).toFixed(1)}KB`);
       } else {
-        console.error(`❌ TTS service request failed: ${ttsResponse.statusText}`);
+        ttsError = `TTS service returned ${ttsResponse.status}: ${ttsResponse.statusText}`;
+        console.error(`❌ TTS service request failed: ${ttsError}`);
       }
     } catch (error) {
-      console.error(`❌ Failed to get TTS audio:`, error.message);
+      ttsError = error.message;
+      console.error(`❌ Failed to get TTS audio:`, ttsError);
     }
     
     // Step 4: Schedule image events based on the LLM's timeline
@@ -624,14 +632,26 @@ app.post('/converse', async (req, res) => {
       }
     }
 
+    // Send end_chat signal via DataChannel if needed
+    if (endChat) {
+      try {
+        await sendImageControlMessage(session.room_name, 'end_chat', {}, Date.now(), {});
+        console.log(`📤 [${session_id}] Sent end_chat signal via DataChannel`);
+      } catch (error) {
+        console.error(`❌ Failed to send end_chat signal:`, error.message);
+      }
+    }
+
     // Step 5: Respond to the initial request with speech text and audio
     res.json({
       success: true,
       session_id,
       user_message: message,
       assistant_response: llmText,
-      audio_base64: audioBase64, // Include the audio data
-      images_scheduled: (timelineEvents || []).length
+      audio_base64: audioBase64, // Include the audio data (empty string if TTS failed)
+      images_scheduled: (timelineEvents || []).length,
+      end_chat: endChat || false,
+      tts_error: ttsError // Include TTS error if present
     });
 
   } catch (error) {
