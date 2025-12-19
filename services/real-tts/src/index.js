@@ -1,8 +1,9 @@
 /**
- * Real TTS Service using espeak/festival
+ * Real TTS Service using OpenAI TTS-1
  *
  * Responsibilities:
- * - Stream real TTS audio using espeak (Linux) or fallback TTS
+ * - Stream real TTS audio using OpenAI TTS-1 API (primary)
+ * - Fallback to espeak (Linux) or mock audio
  * - Emit interleaved control messages (img_preload, img_show)
  * - Output PCM audio chunks for Orchestrator to encode to Opus
  * - Provide Greek civilization narration scripts
@@ -13,19 +14,30 @@ require('dotenv').config();
 const express = require('express');
 const WebSocket = require('ws');
 const { spawn } = require('child_process');
-const { Readable } = require('stream');
+const { Readable, PassThrough } = require('stream');
 const crypto = require('crypto');
 const fs = require('fs');
 const path = require('path');
 const fetch = require('node-fetch');
+const OpenAI = require('openai');
+const prism = require('prism-media');
+const ffmpegPath = require('ffmpeg-static');
 
 const app = express();
 const PORT = process.env.PORT || 3002;
 
-// ElevenLabs Configuration
+// OpenAI Configuration
+const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
+const USE_OPENAI = OPENAI_API_KEY && OPENAI_API_KEY.length > 0;
+const openai = USE_OPENAI ? new OpenAI({ apiKey: OPENAI_API_KEY }) : null;
+
+// ElevenLabs Configuration (fallback)
 const ELEVENLABS_API_KEY = process.env.ELEVENLABS_API_KEY;
-const ELEVENLABS_VOICE_ID = process.env.ELEVENLABS_VOICE_ID || 'EXAVITQu4vr4xnSDxMaL'; // Default: Sarah voice
+const ELEVENLABS_VOICE_ID = process.env.ELEVENLABS_VOICE_ID || 'EXAVITQu4vr4xnSDxMaL';
 const USE_ELEVENLABS = ELEVENLABS_API_KEY && ELEVENLABS_API_KEY.length > 0;
+
+// Debug logging
+console.log(`🔑 ElevenLabs API Key: ${ELEVENLABS_API_KEY ? ELEVENLABS_API_KEY.substring(0, 10) + '...' : 'NOT SET'}`);
 
 // TTS Cache Configuration
 const CACHE_DIR = path.join(__dirname, '..', 'cache', 'tts');
@@ -87,6 +99,56 @@ function loadFromCache(text) {
 }
 
 /**
+ * Synthesize text using OpenAI TTS-1 API
+ * Returns PCM stream (48kHz, mono, 16-bit)
+ */
+async function synthesizeWithOpenAI(text) {
+  console.log(`🎤 Calling OpenAI TTS-1 API (${text.length} chars)`);
+
+  const mp3Response = await openai.audio.speech.create({
+    model: 'tts-1',
+    voice: 'alloy', // Options: alloy, echo, fable, onyx, nova, shimmer
+    input: text,
+    response_format: 'mp3',
+    speed: 1.0
+  });
+
+  // Get the MP3 buffer
+  const mp3Buffer = Buffer.from(await mp3Response.arrayBuffer());
+  console.log(`✅ Received MP3 audio: ${(mp3Buffer.length / 1024).toFixed(1)}KB`);
+
+  // Convert MP3 to PCM using prism-media with ffmpeg-static
+  // OpenAI returns 24kHz MP3, we need 48kHz PCM for LiveKit
+  const pcmStream = new PassThrough();
+  const ffmpegStream = new prism.FFmpeg({
+    command: ffmpegPath,
+    args: [
+      '-analyzeduration', '0',
+      '-loglevel', '0',
+      '-f', 'mp3',
+      '-i', 'pipe:0',
+      '-ar', '48000',      // Resample to 48kHz
+      '-ac', '1',          // Mono
+      '-f', 's16le',       // 16-bit signed little-endian PCM
+      'pipe:1'
+    ]
+  });
+
+  // Create readable stream from MP3 buffer
+  const mp3Stream = new Readable({
+    read() {
+      this.push(mp3Buffer);
+      this.push(null);
+    }
+  });
+
+  // Pipeline: MP3 buffer → FFmpeg → PCM stream
+  mp3Stream.pipe(ffmpegStream).pipe(pcmStream);
+
+  return pcmStream;
+}
+
+/**
  * Stream TTS audio from ElevenLabs API
  * Returns MP3 stream that needs to be converted to PCM
  */
@@ -120,11 +182,12 @@ async function streamFromElevenLabs(text) {
 app.use(express.json());
 
 app.get('/health', (req, res) => {
-  const engine = USE_ELEVENLABS ? 'elevenlabs' : 'espeak/mock';
+  const engine = USE_OPENAI ? 'openai-tts-1' : (USE_ELEVENLABS ? 'elevenlabs' : 'espeak/mock');
   res.json({
     status: 'ok',
     service: 'real-tts',
     engine,
+    openai_enabled: USE_OPENAI,
     elevenlabs_enabled: USE_ELEVENLABS,
     cache_enabled: ENABLE_CACHE
   });
@@ -478,8 +541,8 @@ function createMockPCMStream(textLength) {
  * Synthesize arbitrary text for conversational responses
  * Simplified version without image sync
  */
-function synthesizeText(ws, config = {}) {
-  const { text, session_id = 'default', use_elevenlabs = USE_ELEVENLABS } = config;
+async function synthesizeText(ws, config = {}) {
+  const { text, session_id = 'default' } = config;
 
   if (!text) {
     ws.send(JSON.stringify({
@@ -489,7 +552,8 @@ function synthesizeText(ws, config = {}) {
     return;
   }
 
-  console.log(`Synthesizing text (${text.length} chars, session=${session_id}, engine=${use_elevenlabs ? 'elevenlabs' : 'espeak/mock'})`);
+  const engine = USE_OPENAI ? 'openai-tts-1' : (USE_ELEVENLABS ? 'elevenlabs' : 'espeak/mock');
+  console.log(`Synthesizing text (${text.length} chars, session=${session_id}, engine=${engine})`);
 
   const startTime = Date.now();
   let frameId = 0;
@@ -509,16 +573,20 @@ function synthesizeText(ws, config = {}) {
   let useMockAudio = false;
   const audioChunks = [];
 
-  // Try ElevenLabs if configured
-  if (use_elevenlabs && ELEVENLABS_API_KEY) {
-    console.log('🎤 Using ElevenLabs TTS');
-    // Note: ElevenLabs returns MP3, which needs conversion
-    // For now, fall back to espeak/mock
-    // TODO: Add MP3 to PCM conversion with ffmpeg
-    useMockAudio = true;
-    audioStream = createMockPCMStream(text.length);
-  } else {
-    // Try espeak
+  // Try OpenAI TTS-1 first (primary)
+  if (USE_OPENAI) {
+    try {
+      audioStream = await synthesizeWithOpenAI(text);
+      console.log('✅ Using OpenAI TTS-1 engine');
+    } catch (error) {
+      console.error('❌ OpenAI TTS failed:', error.message);
+      console.log('Falling back to espeak/mock');
+      // Fall through to espeak/mock
+    }
+  }
+
+  // Try espeak if OpenAI failed or not configured
+  if (!audioStream) {
     try {
       ttsProcess = spawn('espeak', [
         '-v', 'en',
@@ -697,4 +765,74 @@ server.on('upgrade', (request, socket, head) => {
   wss.handleUpgrade(request, socket, head, (ws) => {
     wss.emit('connection', ws, request);
   });
+});
+
+// New endpoint to get MP3 directly
+app.post('/synthesize', async (req, res) => {
+  const { text } = req.body;
+  if (!text) {
+    return res.status(400).json({ error: 'text is required' });
+  }
+
+  // Prioritize ElevenLabs if configured
+  if (USE_ELEVENLABS) {
+    try {
+      console.log(`🎤 Calling ElevenLabs API for direct synthesis (${text.length} chars)`);
+      const elevenLabsUrl = `https://api.elevenlabs.io/v1/text-to-speech/${ELEVENLABS_VOICE_ID}`;
+      console.log(`🔍 Using ElevenLabs key: ${ELEVENLABS_API_KEY.substring(0, 15)}...`);
+      const response = await fetch(elevenLabsUrl, {
+        method: 'POST',
+        headers: {
+          'Accept': 'audio/mpeg',
+          'xi-api-key': ELEVENLABS_API_KEY.trim(),
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          text,
+          model_id: 'eleven_turbo_v2_5',
+          voice_settings: {
+            stability: 0.5,
+            similarity_boost: 0.75
+          }
+        })
+      });
+
+      if (!response.ok) {
+        throw new Error(`ElevenLabs API error: ${response.statusText}`);
+      }
+
+      const mp3Buffer = await response.buffer();
+      console.log(`✅ Sending MP3 audio from ElevenLabs: ${(mp3Buffer.length / 1024).toFixed(1)}KB`);
+      res.setHeader('Content-Type', 'audio/mpeg');
+      return res.send(mp3Buffer);
+
+    } catch (error) {
+      console.error('❌ ElevenLabs direct synthesis failed:', error.message);
+      // Fall through to OpenAI if ElevenLabs fails
+    }
+  }
+
+  // Fallback to OpenAI if ElevenLabs is not used or fails
+  if (USE_OPENAI && openai) {
+    try {
+      console.log(`🎤 Calling OpenAI TTS-1 API for direct synthesis (${text.length} chars)`);
+      const mp3Response = await openai.audio.speech.create({
+        model: 'tts-1',
+        voice: 'alloy',
+        input: text,
+        response_format: 'mp3',
+      });
+
+      const mp3Buffer = Buffer.from(await mp3Response.arrayBuffer());
+      console.log(`✅ Sending MP3 audio from OpenAI: ${(mp3Buffer.length / 1024).toFixed(1)}KB`);
+      res.setHeader('Content-Type', 'audio/mpeg');
+      return res.send(mp3Buffer);
+    } catch (error) {
+      console.error('❌ OpenAI direct synthesis failed:', error.message);
+      return res.status(500).json({ error: 'Failed to synthesize audio with all providers' });
+    }
+  }
+
+  // If neither is configured
+  return res.status(500).json({ error: 'No TTS provider is configured' });
 });

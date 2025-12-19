@@ -11,19 +11,52 @@ export class ImageScheduler {
     this.creditEl = options.creditEl;
 
     this.audioContext = null;
-    this.audioStartTime = null;
+    this.audioElement = null;
+    this.timeOffset = null; // Offset between server playout_ts and client performance.now()
     this.preloadedImages = new Map();
     this.scheduledShows = [];
     this.currentBuffer = 'a';
     this.currentImageId = null;
+    this.syncInitialized = false;
 
     this.fallbackImages = new Map();
     this.loadFallbackImages();
   }
 
-  setAudioContext(audioContext) {
+  setAudioContext(audioContext, audioElement) {
     this.audioContext = audioContext;
-    this.audioStartTime = audioContext.currentTime;
+    this.audioElement = audioElement;
+    console.log('Audio context and element set');
+  }
+
+  /**
+   * Initialize time synchronization when first control message arrives
+   * @param {number} serverPlayoutTs - Server's playout_ts from first control message
+   */
+  initializeSync(serverPlayoutTs) {
+    if (this.syncInitialized) return;
+
+    const clientNow = performance.now();
+    this.timeOffset = serverPlayoutTs - clientNow;
+    this.syncInitialized = true;
+
+    console.log(`Time sync initialized: offset=${this.timeOffset}ms`);
+    console.log(`  Server playout_ts: ${serverPlayoutTs}`);
+    console.log(`  Client now: ${clientNow}`);
+  }
+
+  /**
+   * Convert server playout_ts to client performance.now() time
+   * @param {number} serverPlayoutTs - Timestamp from server in audio timeline
+   * @returns {number} Equivalent time in client's performance.now() timeline
+   */
+  convertToLocalTime(serverPlayoutTs) {
+    if (!this.syncInitialized) {
+      console.warn('Time sync not initialized, initializing with current playout_ts');
+      this.initializeSync(serverPlayoutTs);
+      return performance.now();
+    }
+    return serverPlayoutTs - this.timeOffset;
   }
 
   async loadFallbackImages() {
@@ -32,7 +65,12 @@ export class ImageScheduler {
   }
 
   async preload(message) {
-    const { id, cdn_url, ttl_ms } = message;
+    const { id, cdn_url, ttl_ms, playout_ts } = message;
+
+    // Initialize sync on first message with playout_ts
+    if (!this.syncInitialized && playout_ts) {
+      this.initializeSync(playout_ts);
+    }
 
     console.log(`Preloading image: ${id}`);
 
@@ -70,19 +108,36 @@ export class ImageScheduler {
   scheduleShow(message) {
     const { id, playout_ts, transition = 'crossfade', duration_ms = 400, caption, credit } = message;
 
-    console.log(`Scheduling image show: ${id} at ${playout_ts}`);
+    // Initialize sync on first message with playout_ts
+    if (!this.syncInitialized && playout_ts) {
+      this.initializeSync(playout_ts);
+    }
 
-    // Calculate delay from playout_ts
+    // Convert server playout_ts to local client time
+    const localPlayoutTime = this.convertToLocalTime(playout_ts);
     const now = performance.now();
-    const delay = playout_ts - now;
+    const delay = localPlayoutTime - now;
+
+    console.log(`Scheduling image show: ${id}`);
+    console.log(`  Server playout_ts: ${playout_ts}`);
+    console.log(`  Local playout time: ${localPlayoutTime}`);
+    console.log(`  Current time: ${now}`);
+    console.log(`  Delay: ${delay}ms`);
 
     if (delay > 0) {
-      setTimeout(() => {
+      // Schedule for future
+      const timeoutId = setTimeout(() => {
         this.showImage(id, transition, duration_ms, caption, credit);
       }, delay);
-    } else {
-      // Show immediately if we're late
+
+      this.scheduledShows.push({ id, timeoutId });
+    } else if (delay > -100) {
+      // Show immediately if we're slightly late (within 100ms tolerance)
+      console.warn(`Late by ${-delay}ms, showing immediately`);
       this.showImage(id, transition, duration_ms, caption, credit);
+    } else {
+      // Too late, skip this image
+      console.error(`Too late to show image ${id} (${-delay}ms behind), skipping`);
     }
   }
 
@@ -144,6 +199,39 @@ export class ImageScheduler {
     };
 
     requestAnimationFrame(animate);
+  }
+
+  /**
+   * Clear all scheduled image shows
+   */
+  clearScheduled() {
+    for (const scheduled of this.scheduledShows) {
+      clearTimeout(scheduled.timeoutId);
+    }
+    this.scheduledShows = [];
+    console.log('Cleared all scheduled image shows');
+  }
+
+  /**
+   * Reset time synchronization (useful when restarting a session)
+   */
+  resetSync() {
+    this.timeOffset = null;
+    this.syncInitialized = false;
+    this.clearScheduled();
+    console.log('Time synchronization reset');
+  }
+
+  /**
+   * Get sync stats for debugging
+   */
+  getSyncStats() {
+    return {
+      syncInitialized: this.syncInitialized,
+      timeOffset: this.timeOffset,
+      scheduledCount: this.scheduledShows.length,
+      preloadedCount: this.preloadedImages.size,
+    };
   }
 
   next() {

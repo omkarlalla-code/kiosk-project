@@ -73,13 +73,20 @@ export class LiveKitClient {
     if (track.kind === 'audio') {
       // Attach audio track to HTML audio element
       const audioEl = track.attach();
-      audioEl.play();
+      this.audioElement = audioEl;
 
       // Create audio context for timing
       this.audioContext = new AudioContext();
 
+      // Wait for audio to actually start playing before notifying
+      audioEl.addEventListener('playing', () => {
+        console.log('Audio playback started');
+      });
+
+      audioEl.play();
+
       if (this.onAudioTrack) {
-        this.onAudioTrack(track);
+        this.onAudioTrack(track, audioEl);
       }
     }
   }

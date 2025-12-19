@@ -1,0 +1,215 @@
+{
+  "instructions": "Working Wikimedia Commons URLs for Greek Civilization images. Download with: node scripts/download-from-list.js",
+  "images": [
+    {
+      "id": "parthenon_front",
+      "title": "Parthenon - Athens Acropolis",
+      "url": "https://commons.wikimedia.org/wiki/Special:FilePath/The_Parthenon_in_Athens.jpg",
+      "category": "architecture_temples"
+    },
+    {
+      "id": "temple_of_hephaestus",
+      "title": "Temple of Hephaestus",
+      "url": "https://commons.wikimedia.org/wiki/Special:FilePath/ACMA_Héphaisteion.jpg",
+      "category": "architecture_temples"
+    },
+    {
+      "id": "temple_of_poseidon",
+      "title": "Temple of Poseidon - Cape Sounion",
+      "url": "https://commons.wikimedia.org/wiki/Special:FilePath/Cape_Sounion.jpg",
+      "category": "architecture_temples"
+    },
+    {
+      "id": "erechtheion",
+      "title": "Erechtheion with Caryatids",
+      "url": "https://commons.wikimedia.org/wiki/Special:FilePath/Erechtheion_Athens_2016.jpg",
+      "category": "architecture_temples"
+    },
+    {
+      "id": "temple_of_athena_nike",
+      "title": "Temple of Athena Nike",
+      "url": "https://commons.wikimedia.org/wiki/Special:FilePath/Temple_of_Athena_Nike_from_Propylaea.jpg",
+      "category": "architecture_temples"
+    },
+    {
+      "id": "theater_epidaurus",
+      "title": "Ancient Theater of Epidaurus",
+      "url": "https://commons.wikimedia.org/wiki/Special:FilePath/Ancient_theater_of_Epidaurus.jpg",
+      "category": "architecture_theaters"
+    },
+    {
+      "id": "theater_of_dionysus",
+      "title": "Theater of Dionysus",
+      "url": "https://commons.wikimedia.org/wiki/Special:FilePath/Theatre_of_Dionysus,_Athens_-_20070509-02.jpg",
+      "category": "architecture_theaters"
+    },
+    {
+      "id": "ancient_agora",
+      "title": "Ancient Agora of Athens",
+      "url": "https://commons.wikimedia.org/wiki/Special:FilePath/Agora_of_Athens_2015.jpg",
+      "category": "architecture_public"
+    },
+    {
+      "id": "stoa_of_attalos",
+      "title": "Stoa of Attalos (Reconstructed)",
+      "url": "https://commons.wikimedia.org/wiki/Special:FilePath/Stoa_of_Attalos_rebuilt.JPG",
+      "category": "architecture_public"
+    },
+    {
+      "id": "panathenaic_stadium",
+      "title": "Panathenaic Stadium",
+      "url": "https://commons.wikimedia.org/wiki/Special:FilePath/Panathenaic_Stadium_Athens_Greece.jpg",
+      "category": "architecture_public"
+    },
+    {
+      "id": "discus_thrower",
+      "title": "Discobolus (Discus Thrower)",
+      "url": "https://commons.wikimedia.org/wiki/Special:FilePath/Discobolus_icon.png",
+      "category": "sculpture_classical"
+    },
+    {
+      "id": "venus_de_milo",
+      "title": "Venus de Milo (Aphrodite)",
+      "url": "https://commons.wikimedia.org/wiki/Special:FilePath/Front_views_of_the_Venus_de_Milo.jpg",
+      "category": "sculpture_female"
+    },
+    {
+      "id": "winged_victory",
+      "title": "Winged Victory of Samothrace (Nike)",
+      "url": "https://commons.wikimedia.org/wiki/Special:FilePath/Nike_of_Samothrake_Louvre_Ma2369_n4.jpg",
+      "category": "sculpture_female"
+    },
+    {
+      "id": "laocoon",
+      "title": "Laocoön and His Sons",
+      "url": "https://commons.wikimedia.org/wiki/Special:FilePath/Laocoon_Pio-Clementino_Inv1059-1064-1067.jpg",
+      "category": "sculpture_mythological"
+    },
+    {
+      "id": "black_figure_amphora",
+      "title": "Black-Figure Amphora by Exekias",
+      "url": "https://commons.wikimedia.org/wiki/Special:FilePath/Exekias_Amphora_type_A_Vatican_344.jpg",
+      "category": "pottery_vases"
+    },
+    {
+      "id": "red_figure_krater",
+      "title": "Red-Figure Krater",
+      "url": "https://commons.wikimedia.org/wiki/Special:FilePath/Niobid_Painter_ARV_601_14_Niobid_krater_(side_A)_03.jpg",
+      "category": "pottery_vases"
+    },
+    {
+      "id": "socrates_bust",
+      "title": "Bust of Socrates",
+      "url": "https://commons.wikimedia.org/wiki/Special:FilePath/Socrates_Louvre.jpg",
+      "category": "philosophers"
+    },
+    {
+      "id": "plato_bust",
+      "title": "Bust of Plato",
+      "url": "https://commons.wikimedia.org/wiki/Special:FilePath/Plato_Silanion_Musei_Capitolini_MC1377.jpg",
+      "category": "philosophers"
+    },
+    {
+      "id": "aristotle_bust",
+      "title": "Bust of Aristotle",
+      "url": "https://commons.wikimedia.org/wiki/Special:FilePath/Aristotle_Altemps_Inv8575.jpg",
+      "category": "philosophers"
+    },
+    {
+      "id": "hoplite_warrior",
+      "title": "Greek Hoplite Warrior",
+      "url": "https://commons.wikimedia.org/wiki/Special:FilePath/Greek_Phalanx.png",
+      "category": "warfare"
+    },
+    {
+      "id": "corinthian_helmet",
+      "title": "Corinthian Helmet",
+      "url": "https://commons.wikimedia.org/wiki/Special:FilePath/Corinthian_helmet_BM_GR1859.2-26.1.jpg",
+      "category": "warfare"
+    },
+    {
+      "id": "athenian_owl_tetradrachm",
+      "title": "Athenian Owl Tetradrachm Coin",
+      "url": "https://commons.wikimedia.org/wiki/Special:FilePath/Athenian_Tetradrachm.jpg",
+      "category": "coins"
+    },
+    {
+      "id": "alexander_mosaic",
+      "title": "Alexander Mosaic from Pompeii",
+      "url": "https://commons.wikimedia.org/wiki/Special:FilePath/Alexander_and_Bucephalus_-_Battle_of_Issus_mosaic_-_Museo_Archeologico_Nazionale_-_Naples_BW.jpg",
+      "category": "mosaics"
+    },
+    {
+      "id": "delphi_overview",
+      "title": "Sanctuary of Delphi",
+      "url": "https://commons.wikimedia.org/wiki/Special:FilePath/Delphi_overview.jpg",
+      "category": "sites"
+    },
+    {
+      "id": "olympia_overview",
+      "title": "Ancient Olympia",
+      "url": "https://commons.wikimedia.org/wiki/Special:FilePath/Olympia_-_Temple_of_Zeus.jpg",
+      "category": "sites"
+    },
+    {
+      "id": "mycenae_lions_gate",
+      "title": "Lion Gate at Mycenae",
+      "url": "https://commons.wikimedia.org/wiki/Special:FilePath/Lion_Gate,_Mycenae,_Greece.jpg",
+      "category": "sites"
+    },
+    {
+      "id": "knossos_palace",
+      "title": "Palace of Knossos",
+      "url": "https://commons.wikimedia.org/wiki/Special:FilePath/Knossos_palace.jpg",
+      "category": "sites"
+    },
+    {
+      "id": "zeus_statue",
+      "title": "Statue of Zeus",
+      "url": "https://commons.wikimedia.org/wiki/Special:FilePath/Jupiter_Smyrna_Louvre_Ma13.jpg",
+      "category": "gods_goddesses"
+    },
+    {
+      "id": "athena_statue",
+      "title": "Athena Parthenos Statue",
+      "url": "https://commons.wikimedia.org/wiki/Special:FilePath/Mattei_Athena_Louvre_Ma530_n2.jpg",
+      "category": "gods_goddesses"
+    },
+    {
+      "id": "poseidon_trident",
+      "title": "Poseidon with Trident",
+      "url": "https://commons.wikimedia.org/wiki/Special:FilePath/Poseidon_sculpture_Copenhagen_2005.jpg",
+      "category": "gods_goddesses"
+    },
+    {
+      "id": "greek_symposium",
+      "title": "Greek Symposium Scene",
+      "url": "https://commons.wikimedia.org/wiki/Special:FilePath/Symposium_scene_Louvre_G135.jpg",
+      "category": "daily_life"
+    },
+    {
+      "id": "trireme_warship",
+      "title": "Ancient Greek Trireme",
+      "url": "https://commons.wikimedia.org/wiki/Special:FilePath/Trireme.svg",
+      "category": "ships_naval"
+    },
+    {
+      "id": "homer_bust",
+      "title": "Bust of Homer",
+      "url": "https://commons.wikimedia.org/wiki/Special:FilePath/Homer_British_Museum.jpg",
+      "category": "writing_literature"
+    },
+    {
+      "id": "alexander_bust",
+      "title": "Alexander the Great",
+      "url": "https://commons.wikimedia.org/wiki/Special:FilePath/Alexander_the_Great_mosaic.jpg",
+      "category": "historical_figures"
+    },
+    {
+      "id": "pericles_bust",
+      "title": "Pericles",
+      "url": "https://commons.wikimedia.org/wiki/Special:FilePath/Pericles_Pio-Clementino_Inv269.jpg",
+      "category": "historical_figures"
+    }
+  ]
+}

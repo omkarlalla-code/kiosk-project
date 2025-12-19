@@ -52,7 +52,7 @@ let imageLibrary = null;
 // Load image library on startup
 async function loadImageLibrary() {
   try {
-    const libraryPath = path.join(__dirname, '..', '..', '..', 'data', 'greek-images.json');
+    const libraryPath = path.join(__dirname, '..', '..', '..', 'data', 'greek-images-local.json');
     const libraryData = await fs.readFile(libraryPath, 'utf-8');
     imageLibrary = JSON.parse(libraryData);
     console.log('✅ Image library loaded');
@@ -352,6 +352,8 @@ async function sendImageControlMessage(room_name, type, imageData, playout_ts, o
       cdn_url: imageData.cdn_url,
       playout_ts,
       caption: imageData.title || options.caption,
+      title: imageData.title || imageData.id,
+      category: imageData.category || 'Greek Civilization',
       transition: options.transition || 'crossfade',
       duration_ms: options.duration_ms || 400,
       ttl_ms: options.ttl_ms || 8000
@@ -435,6 +437,76 @@ function selectImagesForTopic(topic) {
   return topMatches;
 }
 
+/**
+ * Enrich LLM-generated image payload with real CDN URLs from image library
+ * Takes the fake placeholder from LLM and finds matching real image
+ */
+function enrichImagePayload(llmPayload) {
+  if (!imageLibrary || !imageLibrary.collections) {
+    console.warn(`⚠️ No image library loaded, using LLM placeholder for ${llmPayload.id}`);
+    return llmPayload;
+  }
+
+  // Extract searchable keywords from the LLM's image ID
+  // e.g., "parthenon_athens" -> ["parthenon", "athens"]
+  const searchTerms = llmPayload.id.toLowerCase().split('_').join(' ');
+
+  // Collect all images from all categories
+  const allImages = [];
+  for (const category of Object.values(imageLibrary.collections)) {
+    allImages.push(...category);
+  }
+
+  // Find best match based on keywords
+  let bestMatch = null;
+  let bestScore = 0;
+
+  for (const image of allImages) {
+    let score = 0;
+
+    // Match against image keywords
+    if (image.keywords) {
+      for (const keyword of image.keywords) {
+        if (searchTerms.includes(keyword.toLowerCase())) {
+          score += 10;
+        }
+      }
+    }
+
+    // Match against title
+    if (image.title && searchTerms.includes(image.title.toLowerCase())) {
+      score += 20;
+    }
+
+    // Match against ID
+    if (image.id && searchTerms.includes(image.id.toLowerCase())) {
+      score += 30; // Exact ID match is best
+    }
+
+    if (score > bestScore) {
+      bestScore = score;
+      bestMatch = image;
+    }
+  }
+
+  // If we found a match, use the real image data
+  if (bestMatch) {
+    console.log(`✅ Matched "${llmPayload.id}" → "${bestMatch.id}" (score: ${bestScore})`);
+    return {
+      id: bestMatch.id,
+      cdn_url: bestMatch.cdn_url,
+      title: bestMatch.title,
+      category: bestMatch.category,
+      keywords: bestMatch.keywords,
+      era: bestMatch.era
+    };
+  }
+
+  // No match found - warn but use LLM placeholder (will fail gracefully on frontend)
+  console.warn(`⚠️ No match found for "${llmPayload.id}", image may fail to load`);
+  return llmPayload;
+}
+
 // ========== Conversation Flow: STT → LLM → TTS ==========
 
 /**
@@ -476,70 +548,90 @@ app.post('/converse', async (req, res) => {
       throw new Error(`LLM service error: ${llmResponse.statusText}`);
     }
 
-    const { response: llmText } = await llmResponse.json();
-    console.log(`🤖 [${session_id}] Assistant response: "${llmText}"`);
-
-    // Step 2: Select and preload relevant images based on conversation topic
-    const relevantImages = selectImagesForTopic(message);
-    console.log(`🖼️ Selected ${relevantImages.length} images for topic: "${message}"`);
-
-    // Step 3: Estimate TTS duration and calculate playout timestamps
-    // Rough estimate: 150 words per minute = 2.5 words per second = 0.4 seconds per word
-    const wordCount = llmText.split(/\s+/).length;
-    const estimatedDurationMs = Math.max(wordCount * 400, 3000); // At least 3 seconds
-    const currentTime = Date.now();
-    const speechStartTime = currentTime + 1000; // Start speech in 1 second
-
-    // Step 4: Preload images and send control messages
-    if (relevantImages.length > 0) {
-      // Calculate timing for each image based on speech duration
-      const imageDurationMs = Math.floor(estimatedDurationMs / relevantImages.length);
-
-      for (let i = 0; i < Math.min(relevantImages.length, 3); i++) {
-        const image = relevantImages[i];
-        const imagePlayoutTime = speechStartTime + (i * imageDurationMs);
-
-        // Preload image via ImageScreener
-        await preloadImage(image, imagePlayoutTime);
-
-        // Send img_preload message (tells frontend to prepare the image)
-        await sendImageControlMessage(
-          session.room_name,
-          'img_preload',
-          image,
-          imagePlayoutTime,
-          { ttl_ms: imageDurationMs + 2000 }
-        );
-
-        // Send img_show message (tells frontend when to display it)
-        await sendImageControlMessage(
-          session.room_name,
-          'img_show',
-          image,
-          imagePlayoutTime,
-          {
-            transition: 'crossfade',
-            duration_ms: 400,
-            ttl_ms: imageDurationMs
-          }
-        );
-      }
-
-      console.log(`✅ Preloaded and scheduled ${Math.min(relevantImages.length, 3)} images`);
+    // The LLM now returns a JSON object with speech and a timeline
+    const llmData = await llmResponse.json();
+    
+    // Attempt to parse the inner JSON string if the LLM returns a stringified object
+    let parsedLlmData;
+    if (typeof llmData.response === 'string') {
+        try {
+            // Strip markdown code fences if present (```json ... ``` or ``` ... ```)
+            let cleanedResponse = llmData.response.trim();
+            if (cleanedResponse.startsWith('```')) {
+                // Remove opening fence (```json or ```)
+                cleanedResponse = cleanedResponse.replace(/^```(?:json)?\n?/, '');
+                // Remove closing fence (```)
+                cleanedResponse = cleanedResponse.replace(/\n?```$/, '');
+            }
+            parsedLlmData = JSON.parse(cleanedResponse);
+        } catch (e) {
+            console.error("LLM response is not a valid JSON string:", llmData.response);
+            // Fallback: use the text directly and an empty timeline
+            parsedLlmData = { speech_response: llmData.response, timeline_events: [] };
+        }
+    } else {
+        parsedLlmData = llmData.response;
     }
 
-    // Step 5: Send LLM response to TTS and stream to LiveKit
-    // Start TTS streaming in background
-    streamTextToLiveKit(session, llmText);
+    const { speech_response: llmText, timeline_events: timelineEvents } = parsedLlmData;
 
+    console.log(`🤖 [${session_id}] Assistant response: "${llmText}"`);
+
+    // Step 2 & 3: Get TTS audio from the new endpoint
+    let audioBase64 = '';
+    try {
+      // Convert WebSocket URL to HTTP and remove /ws path if present
+      const ttsHttpUrl = TTS_SERVICE_URL.replace('ws://', 'http://').replace(/\/ws$/, '');
+      const ttsResponse = await fetch(`${ttsHttpUrl}/synthesize`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text: llmText })
+      });
+      if (ttsResponse.ok) {
+        const audioBuffer = await ttsResponse.buffer();
+        audioBase64 = audioBuffer.toString('base64');
+        console.log(`🎤 Fetched TTS audio: ${(audioBase64.length / 1024).toFixed(1)}KB`);
+      } else {
+        console.error(`❌ TTS service request failed: ${ttsResponse.statusText}`);
+      }
+    } catch (error) {
+      console.error(`❌ Failed to get TTS audio:`, error.message);
+    }
+    
+    // Step 4: Schedule image events based on the LLM's timeline
+    if (timelineEvents && timelineEvents.length > 0) {
+      // (Image scheduling logic remains the same)
+      const speechStartTime = Date.now();
+      console.log(`🗓️ [${session_id}] Scheduling ${timelineEvents.length} timeline events.`);
+
+      for (const event of timelineEvents) {
+        if (event.action && event.action.type === 'PRELOAD_IMAGE') {
+          const { payload } = event.action;
+          const offset = event.time_offset_ms || 0;
+          const enrichedPayload = enrichImagePayload(payload);
+          const imagePlayoutTime = speechStartTime + offset;
+          const preloadOffset = Math.max(0, offset - 1500);
+
+          setTimeout(async () => {
+            await preloadImage(enrichedPayload, imagePlayoutTime);
+            await sendImageControlMessage(session.room_name, 'img_preload', enrichedPayload, imagePlayoutTime, { ttl_ms: 5000 });
+          }, preloadOffset);
+
+          setTimeout(async () => {
+            await sendImageControlMessage(session.room_name, 'img_show', enrichedPayload, imagePlayoutTime, { transition: 'crossfade', duration_ms: 400, ttl_ms: 8000 });
+          }, offset);
+        }
+      }
+    }
+
+    // Step 5: Respond to the initial request with speech text and audio
     res.json({
       success: true,
       session_id,
       user_message: message,
       assistant_response: llmText,
-      status: 'streaming_audio',
-      images_scheduled: Math.min(relevantImages.length, 3),
-      estimated_duration_ms: estimatedDurationMs
+      audio_base64: audioBase64, // Include the audio data
+      images_scheduled: (timelineEvents || []).length
     });
 
   } catch (error) {

@@ -14,9 +14,16 @@ const cors = require('cors');
 const fetch = require('node-fetch');
 const sharp = require('sharp');
 const { LRUCache } = require('lru-cache');
+const https = require('https');
+
+// Disable SSL verification for CDN fetches (local demo only)
+const httpsAgent = new https.Agent({
+  rejectUnauthorized: false
+});
 
 const app = express();
 const PORT = process.env.PORT || 3001;
+const DEMO_MODE = process.env.DEMO_MODE === 'true' || true; // Enable demo mode for kiosk
 
 app.use(cors());
 app.use(express.json());
@@ -51,6 +58,25 @@ app.post('/preload', async (req, res) => {
 
     console.log(`📥 Preload request: ${id} from ${cdn_url}`);
 
+    // DEMO MODE: Skip actual fetching, return success immediately
+    if (DEMO_MODE) {
+      console.log(`🎭 Demo mode: Simulating preload for ${id}`);
+      imageCache.set(id, {
+        buffer: Buffer.from('demo-placeholder'),
+        cdn_url,
+        cached_at: Date.now(),
+        demo: true
+      });
+      stats.preloads++;
+      return res.json({
+        id,
+        ready: true,
+        from_cache: false,
+        demo_mode: true,
+        playout_ts
+      });
+    }
+
     // Check cache first
     if (imageCache.has(id)) {
       stats.cache_hits++;
@@ -73,7 +99,8 @@ app.post('/preload', async (req, res) => {
       headers: {
         'User-Agent': 'ImageScreener/1.0'
       },
-      timeout: 5000
+      timeout: 10000,
+      agent: httpsAgent
     });
 
     if (!response.ok) {

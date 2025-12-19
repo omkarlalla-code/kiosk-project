@@ -1,0 +1,1469 @@
+{
+  "collections": {
+    "architecture_temples": [
+      {
+        "id": "parthenon_front",
+        "title": "Parthenon — Athens Acropolis",
+        "cdn_url": "/images/greek/parthenon_front.jpg",
+        "keywords": [
+          "parthenon",
+          "athena",
+          "acropolis",
+          "temple",
+          "athens",
+          "doric",
+          "column"
+        ],
+        "category": "architecture_temples",
+        "era": "Classical (447-432 BCE)",
+        "image_type": "photo",
+        "original_url": "https://upload.wikimedia.org/wikipedia/commons/d/da/The_Parthenon_in_Athens.jpg"
+      },
+      {
+        "id": "temple_of_hephaestus",
+        "title": "Temple of Hephaestus",
+        "cdn_url": "/images/greek/temple_of_hephaestus.jpg",
+        "keywords": [
+          "hephaestus",
+          "temple",
+          "athens",
+          "doric",
+          "agora"
+        ],
+        "category": "architecture_temples",
+        "era": "Classical (449 BCE)",
+        "image_type": "photo",
+        "original_url": "https://upload.wikimedia.org/wikipedia/commons/8/8c/Temple_of_Hephaestus_in_Athens.jpg"
+      },
+      {
+        "id": "temple_of_poseidon",
+        "title": "Temple of Poseidon — Cape Sounion",
+        "cdn_url": "/images/greek/temple_of_poseidon.jpg",
+        "keywords": [
+          "poseidon",
+          "temple",
+          "sea",
+          "sounion",
+          "doric"
+        ],
+        "category": "architecture_temples",
+        "era": "Classical (444 BCE)",
+        "image_type": "photo",
+        "original_url": "https://upload.wikimedia.org/wikipedia/commons/f/f4/Cape_Sounion.jpg"
+      },
+      {
+        "id": "temple_of_zeus",
+        "title": "Temple of Olympian Zeus",
+        "cdn_url": "/images/greek/temple_of_zeus.jpg",
+        "keywords": [
+          "zeus",
+          "temple",
+          "athens",
+          "olympian",
+          "corinthian"
+        ],
+        "category": "architecture_temples",
+        "era": "Hellenistic (begun 6th century BCE)",
+        "image_type": "photo",
+        "original_url": "https://upload.wikimedia.org/wikipedia/commons/2/2b/Temple_of_Olympian_Zeus%2C_Athens_-_20070829-02.jpg"
+      },
+      {
+        "id": "erechtheion",
+        "title": "Erechtheion with Caryatids",
+        "cdn_url": "/images/greek/erechtheion.jpg",
+        "keywords": [
+          "erechtheion",
+          "caryatid",
+          "acropolis",
+          "athens",
+          "ionic",
+          "athena",
+          "poseidon"
+        ],
+        "category": "architecture_temples",
+        "era": "Classical (421-406 BCE)",
+        "image_type": "photo",
+        "original_url": "https://upload.wikimedia.org/wikipedia/commons/5/5c/Erechtheion_Athens.jpg"
+      },
+      {
+        "id": "temple_of_apollo_delphi",
+        "title": "Temple of Apollo — Delphi",
+        "cdn_url": "/images/greek/temple_of_apollo_delphi.jpg",
+        "keywords": [
+          "apollo",
+          "delphi",
+          "oracle",
+          "temple",
+          "doric"
+        ],
+        "category": "architecture_temples",
+        "era": "Classical (4th century BCE)",
+        "image_type": "photo",
+        "original_url": "https://upload.wikimedia.org/wikipedia/commons/c/c8/Delphi_temple_of_Apollo.jpg"
+      },
+      {
+        "id": "temple_of_athena_nike",
+        "title": "Temple of Athena Nike",
+        "cdn_url": "/images/greek/temple_of_athena_nike.jpg",
+        "keywords": [
+          "athena",
+          "nike",
+          "victory",
+          "acropolis",
+          "ionic",
+          "temple"
+        ],
+        "category": "architecture_temples",
+        "era": "Classical (427-424 BCE)",
+        "image_type": "photo",
+        "original_url": "https://upload.wikimedia.org/wikipedia/commons/9/91/Athena_Nike_temple%2C_Acropolis%2C_Athens%2C_Greece_-_panoramio.jpg"
+      }
+    ],
+    "architecture_theaters": [
+      {
+        "id": "theater_epidaurus",
+        "title": "Theater of Epidaurus",
+        "cdn_url": "/images/greek/theater_epidaurus.jpg",
+        "keywords": [
+          "theater",
+          "epidaurus",
+          "acoustics",
+          "drama",
+          "performance"
+        ],
+        "category": "architecture_theaters",
+        "era": "Classical (4th century BCE)",
+        "image_type": "photo",
+        "original_url": "https://upload.wikimedia.org/wikipedia/commons/9/9f/Theatre_of_Epidaurus.jpg"
+      },
+      {
+        "id": "theater_of_dionysus",
+        "title": "Theater of Dionysus — Athens",
+        "cdn_url": "/images/greek/theater_of_dionysus.svg",
+        "keywords": [
+          "theater",
+          "dionysus",
+          "athens",
+          "drama",
+          "tragedy",
+          "comedy"
+        ],
+        "category": "architecture_theaters",
+        "era": "Classical (6th-4th century BCE)",
+        "image_type": "svg_placeholder",
+        "original_url": "https://upload.wikimedia.org/wikipedia/commons/0/04/Theatre_of_Dionysus_01.jpg"
+      },
+      {
+        "id": "theater_delphi",
+        "title": "Theater at Delphi",
+        "cdn_url": "/images/greek/theater_delphi.jpg",
+        "keywords": [
+          "theater",
+          "delphi",
+          "oracle",
+          "mountains"
+        ],
+        "category": "architecture_theaters",
+        "era": "Classical (4th century BCE)",
+        "image_type": "photo",
+        "original_url": "https://upload.wikimedia.org/wikipedia/commons/2/26/Delphi_-_The_theatre.jpg"
+      }
+    ],
+    "architecture_public": [
+      {
+        "id": "ancient_agora",
+        "title": "Ancient Agora of Athens",
+        "cdn_url": "/images/greek/ancient_agora.jpg",
+        "keywords": [
+          "agora",
+          "marketplace",
+          "athens",
+          "democracy",
+          "public",
+          "forum"
+        ],
+        "category": "architecture_public",
+        "era": "Classical-Hellenistic",
+        "image_type": "photo",
+        "original_url": "https://upload.wikimedia.org/wikipedia/commons/0/00/Ancient_Agora_of_Athens_2019.jpg"
+      },
+      {
+        "id": "stoa_of_attalos",
+        "title": "Stoa of Attalos",
+        "cdn_url": "/images/greek/stoa_of_attalos.jpg",
+        "keywords": [
+          "stoa",
+          "colonnade",
+          "agora",
+          "athens",
+          "shopping"
+        ],
+        "category": "architecture_public",
+        "era": "Hellenistic (159-138 BCE)",
+        "image_type": "photo",
+        "original_url": "https://upload.wikimedia.org/wikipedia/commons/1/15/Stoa_of_Attalos_%28reconstruction%29.jpg"
+      },
+      {
+        "id": "panathenaic_stadium",
+        "title": "Panathenaic Stadium",
+        "cdn_url": "/images/greek/panathenaic_stadium.jpg",
+        "keywords": [
+          "stadium",
+          "olympic",
+          "games",
+          "athletics",
+          "sport",
+          "panathenaic"
+        ],
+        "category": "architecture_public",
+        "era": "Classical (330 BCE)",
+        "image_type": "photo",
+        "original_url": "https://upload.wikimedia.org/wikipedia/commons/b/b6/Panathenaic_Stadium_in_Athens_-_panoramio.jpg"
+      },
+      {
+        "id": "olympia_stadium",
+        "title": "Stadium at Olympia",
+        "cdn_url": "/images/greek/olympia_stadium.jpg",
+        "keywords": [
+          "olympia",
+          "olympic",
+          "stadium",
+          "games",
+          "zeus"
+        ],
+        "category": "architecture_public",
+        "era": "Classical (5th century BCE)",
+        "image_type": "photo",
+        "original_url": "https://upload.wikimedia.org/wikipedia/commons/9/98/Stadium_of_Olympia.jpg"
+      }
+    ],
+    "sculpture_classical": [
+      {
+        "id": "discus_thrower",
+        "title": "Discobolus (Discus Thrower)",
+        "cdn_url": "/images/greek/discus_thrower.jpg",
+        "keywords": [
+          "discus",
+          "athlete",
+          "myron",
+          "sculpture",
+          "olympic",
+          "sport"
+        ],
+        "category": "sculpture_classical",
+        "era": "Classical (5th century BCE)",
+        "image_type": "photo",
+        "original_url": "https://upload.wikimedia.org/wikipedia/commons/8/88/Discus_thrower_2_century_jpg.jpg"
+      },
+      {
+        "id": "doryphoros",
+        "title": "Doryphoros (Spear Bearer)",
+        "cdn_url": "/images/greek/doryphoros.jpg",
+        "keywords": [
+          "polykleitos",
+          "sculpture",
+          "canon",
+          "proportion",
+          "athlete"
+        ],
+        "category": "sculpture_classical",
+        "era": "Classical (5th century BCE)",
+        "image_type": "photo",
+        "original_url": "https://upload.wikimedia.org/wikipedia/commons/d/d0/Doryphoros_MAN_Napoli_Inv6011-2.jpg"
+      },
+      {
+        "id": "apollo_belvedere",
+        "title": "Apollo Belvedere",
+        "cdn_url": "/images/greek/apollo_belvedere.jpg",
+        "keywords": [
+          "apollo",
+          "god",
+          "sculpture",
+          "beauty",
+          "ideal"
+        ],
+        "category": "sculpture_classical",
+        "era": "Classical (4th century BCE)",
+        "image_type": "photo",
+        "original_url": "https://upload.wikimedia.org/wikipedia/commons/4/4c/Apollo_of_the_Belvedere.jpg"
+      },
+      {
+        "id": "dying_gaul",
+        "title": "The Dying Gaul",
+        "cdn_url": "/images/greek/dying_gaul.jpg",
+        "keywords": [
+          "gaul",
+          "warrior",
+          "sculpture",
+          "hellenistic",
+          "emotion"
+        ],
+        "category": "sculpture_classical",
+        "era": "Hellenistic (3rd century BCE)",
+        "image_type": "photo",
+        "original_url": "https://upload.wikimedia.org/wikipedia/commons/9/9f/The_Dying_Gaul%2C_also_called_The_Dying_Gladiator.jpg"
+      }
+    ],
+    "sculpture_female": [
+      {
+        "id": "venus_de_milo",
+        "title": "Aphrodite of Milos (Venus de Milo)",
+        "cdn_url": "/images/greek/venus_de_milo.jpg",
+        "keywords": [
+          "aphrodite",
+          "venus",
+          "goddess",
+          "love",
+          "beauty",
+          "sculpture"
+        ],
+        "category": "sculpture_female",
+        "era": "Hellenistic (130-100 BCE)",
+        "image_type": "photo",
+        "original_url": "https://upload.wikimedia.org/wikipedia/commons/4/47/Aphrodite_of_Milos.jpg"
+      },
+      {
+        "id": "winged_victory",
+        "title": "Winged Victory of Samothrace",
+        "cdn_url": "/images/greek/winged_victory.jpg",
+        "keywords": [
+          "nike",
+          "victory",
+          "winged",
+          "goddess",
+          "sculpture"
+        ],
+        "category": "sculpture_female",
+        "era": "Hellenistic (2nd century BCE)",
+        "image_type": "photo",
+        "original_url": "https://upload.wikimedia.org/wikipedia/commons/5/5f/Nike_of_Samothrake_Louvre_Ma2369_n4.jpg"
+      },
+      {
+        "id": "athena_parthenos_replica",
+        "title": "Athena Parthenos (Replica)",
+        "cdn_url": "/images/greek/athena_parthenos_replica.jpg",
+        "keywords": [
+          "athena",
+          "goddess",
+          "wisdom",
+          "parthenos",
+          "phidias"
+        ],
+        "category": "sculpture_female",
+        "era": "Classical (5th century BCE original)",
+        "image_type": "photo",
+        "original_url": "https://upload.wikimedia.org/wikipedia/commons/6/6c/Athena_Varvakeion_BM.jpg"
+      }
+    ],
+    "sculpture_mythological": [
+      {
+        "id": "laocoon",
+        "title": "Laocoön and His Sons",
+        "cdn_url": "/images/greek/laocoon.jpg",
+        "keywords": [
+          "laocoon",
+          "troy",
+          "serpent",
+          "sculpture",
+          "tragedy",
+          "trojan"
+        ],
+        "category": "sculpture_mythological",
+        "era": "Hellenistic (2nd-1st century BCE)",
+        "image_type": "photo",
+        "original_url": "https://upload.wikimedia.org/wikipedia/commons/1/13/Laocoon_Pio-Clementino_Inv1059-1064-1067.jpg"
+      },
+      {
+        "id": "zeus_poseidon_bronze",
+        "title": "Zeus or Poseidon (Artemision Bronze)",
+        "cdn_url": "/images/greek/zeus_poseidon_bronze.jpg",
+        "keywords": [
+          "zeus",
+          "poseidon",
+          "bronze",
+          "god",
+          "sculpture"
+        ],
+        "category": "sculpture_mythological",
+        "era": "Classical (460 BCE)",
+        "image_type": "photo",
+        "original_url": "https://upload.wikimedia.org/wikipedia/commons/0/07/Zeus_or_Poseidon_front_of_statue.jpg"
+      }
+    ],
+    "pottery_vases": [
+      {
+        "id": "black_figure_amphora",
+        "title": "Black-Figure Amphora by Exekias",
+        "cdn_url": "/images/greek/black_figure_amphora.jpg",
+        "keywords": [
+          "pottery",
+          "vase",
+          "black figure",
+          "dionysus",
+          "exekias"
+        ],
+        "category": "pottery_vases",
+        "era": "Archaic (6th century BCE)",
+        "image_type": "photo",
+        "original_url": "https://upload.wikimedia.org/wikipedia/commons/7/7a/Exekias_Dionysos_Staatliche_Antikensammlungen_2044.jpg"
+      },
+      {
+        "id": "red_figure_krater",
+        "title": "Red-Figure Krater",
+        "cdn_url": "/images/greek/red_figure_krater.jpg",
+        "keywords": [
+          "pottery",
+          "red figure",
+          "krater",
+          "myth"
+        ],
+        "category": "pottery_vases",
+        "era": "Classical (5th century BCE)",
+        "image_type": "photo",
+        "original_url": "https://upload.wikimedia.org/wikipedia/commons/3/3e/Niobid_Painter_-_Red-Figure_Calyx-Krater_-_Walters_482738_-_Side_A.jpg"
+      },
+      {
+        "id": "francois_vase",
+        "title": "François Vase",
+        "cdn_url": "/images/greek/francois_vase.jpg",
+        "keywords": [
+          "pottery",
+          "vase",
+          "black figure",
+          "mythology",
+          "narrative"
+        ],
+        "category": "pottery_vases",
+        "era": "Archaic (570 BCE)",
+        "image_type": "photo",
+        "original_url": "https://upload.wikimedia.org/wikipedia/commons/1/1d/François_Vase_0.jpg"
+      }
+    ],
+    "philosophers": [
+      {
+        "id": "socrates_bust",
+        "title": "Bust of Socrates",
+        "cdn_url": "/images/greek/socrates_bust.jpg",
+        "keywords": [
+          "socrates",
+          "philosopher",
+          "philosophy",
+          "athens",
+          "bust"
+        ],
+        "category": "philosophers",
+        "era": "Roman copy of 4th century BCE original",
+        "image_type": "photo",
+        "original_url": "https://upload.wikimedia.org/wikipedia/commons/a/a4/Socrates_Louvre.jpg"
+      },
+      {
+        "id": "plato_bust",
+        "title": "Bust of Plato",
+        "cdn_url": "/images/greek/plato_bust.jpg",
+        "keywords": [
+          "plato",
+          "philosopher",
+          "philosophy",
+          "academy",
+          "forms"
+        ],
+        "category": "philosophers",
+        "era": "Roman copy of 4th century BCE original",
+        "image_type": "photo",
+        "original_url": "https://upload.wikimedia.org/wikipedia/commons/6/64/Plato_-_roman_copy.jpg"
+      },
+      {
+        "id": "aristotle_bust",
+        "title": "Bust of Aristotle",
+        "cdn_url": "/images/greek/aristotle_bust.jpg",
+        "keywords": [
+          "aristotle",
+          "philosopher",
+          "philosophy",
+          "logic",
+          "science"
+        ],
+        "category": "philosophers",
+        "era": "Roman copy of 4th century BCE original",
+        "image_type": "photo",
+        "original_url": "https://upload.wikimedia.org/wikipedia/commons/a/ae/Aristotle_Altemps_Inv8575.jpg"
+      }
+    ],
+    "warfare": [
+      {
+        "id": "hoplite_warrior",
+        "title": "Greek Hoplite Warrior",
+        "cdn_url": "/images/greek/hoplite_warrior.jpg",
+        "keywords": [
+          "hoplite",
+          "warrior",
+          "soldier",
+          "armor",
+          "spear",
+          "shield"
+        ],
+        "category": "warfare",
+        "era": "Classical",
+        "image_type": "photo",
+        "original_url": "https://upload.wikimedia.org/wikipedia/commons/b/b0/Greek_warrior_from_a_Lucanian_tomb_fresco.jpg"
+      },
+      {
+        "id": "corinthian_helmet",
+        "title": "Corinthian Helmet",
+        "cdn_url": "/images/greek/corinthian_helmet.jpg",
+        "keywords": [
+          "helmet",
+          "corinthian",
+          "armor",
+          "warfare",
+          "bronze"
+        ],
+        "category": "warfare",
+        "era": "Archaic (550 BCE)",
+        "image_type": "photo",
+        "original_url": "https://upload.wikimedia.org/wikipedia/commons/d/d9/Corinthian_helmet_550_BC_BM_GR1859.2-26.1.jpg"
+      }
+    ],
+    "coins": [
+      {
+        "id": "athenian_owl_tetradrachm",
+        "title": "Athenian Owl Tetradrachm",
+        "cdn_url": "/images/greek/athenian_owl_tetradrachm.jpg",
+        "keywords": [
+          "coin",
+          "owl",
+          "athena",
+          "money",
+          "silver",
+          "athens"
+        ],
+        "category": "coins",
+        "era": "Classical (480-420 BCE)",
+        "image_type": "photo",
+        "original_url": "https://upload.wikimedia.org/wikipedia/commons/3/3d/Tetradrachm_Athens_480-420BC_MBA_Lyon.jpg"
+      },
+      {
+        "id": "alexander_tetradrachm",
+        "title": "Alexander the Great Tetradrachm",
+        "cdn_url": "/images/greek/alexander_tetradrachm.jpg",
+        "keywords": [
+          "alexander",
+          "coin",
+          "macedon",
+          "money",
+          "empire"
+        ],
+        "category": "coins",
+        "era": "Hellenistic (336-323 BCE)",
+        "image_type": "photo",
+        "original_url": "https://upload.wikimedia.org/wikipedia/commons/9/9f/Alexander_III_the_Great_tetradrachm_Heraclea_Lucania_bronze_original.jpg"
+      }
+    ],
+    "mosaics": [
+      {
+        "id": "alexander_mosaic",
+        "title": "Alexander Mosaic (Battle of Issus)",
+        "cdn_url": "/images/greek/alexander_mosaic.svg",
+        "keywords": [
+          "alexander",
+          "mosaic",
+          "battle",
+          "issus",
+          "darius"
+        ],
+        "category": "mosaics",
+        "era": "Hellenistic (2nd century BCE)",
+        "image_type": "svg_placeholder",
+        "original_url": "https://upload.wikimedia.org/wikipedia/commons/2/2f/Alexander_Mosaic_from_the_Pompeii_House_of_the_Faun_MAN_Napoli_Inv10020.jpg"
+      }
+    ],
+    "sites": [
+      {
+        "id": "delphi_overview",
+        "title": "Sanctuary of Delphi",
+        "cdn_url": "/images/greek/delphi_overview.jpg",
+        "keywords": [
+          "delphi",
+          "oracle",
+          "apollo",
+          "sanctuary",
+          "mountains"
+        ],
+        "category": "sites",
+        "era": "Classical-Hellenistic",
+        "image_type": "photo",
+        "original_url": "https://upload.wikimedia.org/wikipedia/commons/f/f4/Delphi_archaeological_site_overview.jpg"
+      },
+      {
+        "id": "olympia_overview",
+        "title": "Sanctuary of Olympia",
+        "cdn_url": "/images/greek/olympia_overview.jpg",
+        "keywords": [
+          "olympia",
+          "olympic",
+          "zeus",
+          "games",
+          "sanctuary"
+        ],
+        "category": "sites",
+        "era": "Archaic-Classical",
+        "image_type": "photo",
+        "original_url": "https://upload.wikimedia.org/wikipedia/commons/6/6f/Archaeological_Site_of_Olympia-1095.jpg"
+      },
+      {
+        "id": "meteora_monasteries",
+        "title": "Meteora Monasteries",
+        "cdn_url": "/images/greek/meteora_monasteries.jpg",
+        "keywords": [
+          "meteora",
+          "monastery",
+          "byzantine",
+          "cliffs"
+        ],
+        "category": "sites",
+        "era": "Byzantine (14th-16th century CE)",
+        "image_type": "photo",
+        "original_url": "https://upload.wikimedia.org/wikipedia/commons/b/bc/Meteora%2C_Thessaly%2C_Greece2.jpg"
+      },
+      {
+        "id": "mycenae_lions_gate",
+        "title": "Lion Gate at Mycenae",
+        "cdn_url": "/images/greek/mycenae_lions_gate.jpg",
+        "keywords": [
+          "mycenae",
+          "lion gate",
+          "bronze age",
+          "cyclopean",
+          "fortress"
+        ],
+        "category": "sites",
+        "era": "Bronze Age (1250 BCE)",
+        "image_type": "photo",
+        "original_url": "https://upload.wikimedia.org/wikipedia/commons/2/2a/Lion_Gate_Mycenae.jpg"
+      },
+      {
+        "id": "knossos_palace",
+        "title": "Palace of Knossos — Crete",
+        "cdn_url": "/images/greek/knossos_palace.jpg",
+        "keywords": [
+          "knossos",
+          "minoan",
+          "crete",
+          "palace",
+          "labyrinth",
+          "minotaur"
+        ],
+        "category": "sites",
+        "era": "Bronze Age (1900-1400 BCE)",
+        "image_type": "photo",
+        "original_url": "https://upload.wikimedia.org/wikipedia/commons/e/e3/Knossos_-_North_Portico_02.jpg"
+      }
+    ],
+    "gods_goddesses": [
+      {
+        "id": "zeus_statue",
+        "title": "Zeus Statue",
+        "cdn_url": "/images/greek/zeus_statue.jpg",
+        "keywords": [
+          "zeus",
+          "jupiter",
+          "god",
+          "king",
+          "olympus",
+          "thunder"
+        ],
+        "category": "gods_goddesses",
+        "era": "Roman copy of Greek original",
+        "image_type": "photo",
+        "original_url": "https://upload.wikimedia.org/wikipedia/commons/c/c8/Jupiter_Smyrna_Louvre_Ma13.jpg"
+      },
+      {
+        "id": "athena_statue",
+        "title": "Athena Giustiniani",
+        "cdn_url": "/images/greek/athena_statue.jpg",
+        "keywords": [
+          "athena",
+          "goddess",
+          "wisdom",
+          "war",
+          "owl",
+          "aegis"
+        ],
+        "category": "gods_goddesses",
+        "era": "Roman copy of 4th century BCE Greek original",
+        "image_type": "photo",
+        "original_url": "https://upload.wikimedia.org/wikipedia/commons/2/22/Mattei_Athena_Louvre_Ma530_n2.jpg"
+      },
+      {
+        "id": "artemis_diana",
+        "title": "Artemis of Versailles",
+        "cdn_url": "/images/greek/artemis_diana.jpg",
+        "keywords": [
+          "artemis",
+          "diana",
+          "goddess",
+          "hunt",
+          "moon",
+          "bow"
+        ],
+        "category": "gods_goddesses",
+        "era": "Roman copy of Greek original",
+        "image_type": "photo",
+        "original_url": "https://upload.wikimedia.org/wikipedia/commons/7/73/Diane_de_Versailles_Leochares.jpg"
+      },
+      {
+        "id": "hermes_olympia",
+        "title": "Hermes and Infant Dionysus",
+        "cdn_url": "/images/greek/hermes_olympia.jpg",
+        "keywords": [
+          "hermes",
+          "messenger",
+          "god",
+          "dionysus",
+          "praxiteles"
+        ],
+        "category": "gods_goddesses",
+        "era": "Classical (4th century BCE)",
+        "image_type": "photo",
+        "original_url": "https://upload.wikimedia.org/wikipedia/commons/8/82/Hermes_di_Prassitele%2C_at_Olimpia%2C_front.jpg"
+      },
+      {
+        "id": "poseidon_trident",
+        "title": "Poseidon with Trident",
+        "cdn_url": "/images/greek/poseidon_trident.jpg",
+        "keywords": [
+          "poseidon",
+          "neptune",
+          "god",
+          "sea",
+          "trident",
+          "ocean"
+        ],
+        "category": "gods_goddesses",
+        "era": "Roman copy of Greek original",
+        "image_type": "photo",
+        "original_url": "https://upload.wikimedia.org/wikipedia/commons/1/1e/0036MAN-Poseidon.jpg"
+      },
+      {
+        "id": "hera_statue",
+        "title": "Hera Borghese",
+        "cdn_url": "/images/greek/hera_statue.jpg",
+        "keywords": [
+          "hera",
+          "juno",
+          "goddess",
+          "queen",
+          "marriage",
+          "wife of zeus"
+        ],
+        "category": "gods_goddesses",
+        "era": "Roman copy of Greek original",
+        "image_type": "photo",
+        "original_url": "https://upload.wikimedia.org/wikipedia/commons/b/bc/Hera_Borghese_Ny_Carlsberg_Glyptotek.jpg"
+      }
+    ],
+    "daily_life": [
+      {
+        "id": "greek_symposium",
+        "title": "Symposium Scene (Red-Figure)",
+        "cdn_url": "/images/greek/greek_symposium.jpg",
+        "keywords": [
+          "symposium",
+          "banquet",
+          "drinking",
+          "party",
+          "wine",
+          "social"
+        ],
+        "category": "daily_life",
+        "era": "Classical (5th century BCE)",
+        "image_type": "photo",
+        "original_url": "https://upload.wikimedia.org/wikipedia/commons/0/07/Symposiast_Staatliche_Antikensammlungen_8935_A_full.jpg"
+      },
+      {
+        "id": "greek_school",
+        "title": "School Scene on Pottery",
+        "cdn_url": "/images/greek/greek_school.jpg",
+        "keywords": [
+          "education",
+          "school",
+          "teacher",
+          "student",
+          "learning",
+          "music"
+        ],
+        "category": "daily_life",
+        "era": "Classical (5th century BCE)",
+        "image_type": "photo",
+        "original_url": "https://upload.wikimedia.org/wikipedia/commons/e/e0/Berlin_Painter_Staatliche_Antikensammlungen_2285_n1.jpg"
+      },
+      {
+        "id": "greek_women_fountain",
+        "title": "Women at Fountain House",
+        "cdn_url": "/images/greek/greek_women_fountain.jpg",
+        "keywords": [
+          "women",
+          "fountain",
+          "water",
+          "daily life",
+          "domestic"
+        ],
+        "category": "daily_life",
+        "era": "Archaic (6th century BCE)",
+        "image_type": "photo",
+        "original_url": "https://upload.wikimedia.org/wikipedia/commons/a/a3/Women_at_Fountain_House_Berlin_1984.39.jpg"
+      },
+      {
+        "id": "greek_farmer",
+        "title": "Farmer Plowing Scene",
+        "cdn_url": "/images/greek/greek_farmer.jpg",
+        "keywords": [
+          "farming",
+          "agriculture",
+          "plow",
+          "ox",
+          "rural",
+          "work"
+        ],
+        "category": "daily_life",
+        "era": "Archaic (6th century BCE)",
+        "image_type": "photo",
+        "original_url": "https://upload.wikimedia.org/wikipedia/commons/9/9d/Black-figured_plaque_with_scene_of_plowing.jpg"
+      },
+      {
+        "id": "greek_marketplace",
+        "title": "Market Scene on Pottery",
+        "cdn_url": "/images/greek/greek_marketplace.jpg",
+        "keywords": [
+          "market",
+          "agora",
+          "trade",
+          "commerce",
+          "shopping"
+        ],
+        "category": "daily_life",
+        "era": "Classical (5th century BCE)",
+        "image_type": "photo",
+        "original_url": "https://upload.wikimedia.org/wikipedia/commons/f/f6/Tondo_of_an_Attic_red-figure_kylix.jpg"
+      }
+    ],
+    "ships_naval": [
+      {
+        "id": "trireme_warship",
+        "title": "Greek Trireme Reconstruction",
+        "cdn_url": "/images/greek/trireme_warship.jpg",
+        "keywords": [
+          "trireme",
+          "warship",
+          "navy",
+          "rowing",
+          "naval",
+          "battle"
+        ],
+        "category": "ships_naval",
+        "era": "Classical reconstruction",
+        "image_type": "photo",
+        "original_url": "https://upload.wikimedia.org/wikipedia/commons/f/f8/Trireme_1.jpg"
+      },
+      {
+        "id": "ship_pottery",
+        "title": "Greek Ship on Black-Figure Vase",
+        "cdn_url": "/images/greek/ship_pottery.jpg",
+        "keywords": [
+          "ship",
+          "sailing",
+          "dionysus",
+          "sea",
+          "vessel",
+          "boat"
+        ],
+        "category": "ships_naval",
+        "era": "Archaic (6th century BCE)",
+        "image_type": "photo",
+        "original_url": "https://upload.wikimedia.org/wikipedia/commons/7/7a/Exekias_Dionysos_Staatliche_Antikensammlungen_2044.jpg"
+      },
+      {
+        "id": "naval_battle_relief",
+        "title": "Naval Battle Relief",
+        "cdn_url": "/images/greek/naval_battle_relief.jpg",
+        "keywords": [
+          "naval",
+          "battle",
+          "war",
+          "ships",
+          "rowing",
+          "fleet"
+        ],
+        "category": "ships_naval",
+        "era": "Classical (5th century BCE)",
+        "image_type": "photo",
+        "original_url": "https://upload.wikimedia.org/wikipedia/commons/3/3d/Lenormant_relief.jpg"
+      }
+    ],
+    "music_arts": [
+      {
+        "id": "lyre_player",
+        "title": "Musician with Lyre",
+        "cdn_url": "/images/greek/lyre_player.jpg",
+        "keywords": [
+          "music",
+          "lyre",
+          "musician",
+          "instrument",
+          "performance"
+        ],
+        "category": "music_arts",
+        "era": "Classical (5th century BCE)",
+        "image_type": "photo",
+        "original_url": "https://upload.wikimedia.org/wikipedia/commons/8/88/Lyre_player_NAMA_3536_Athens_Greece1.jpg"
+      },
+      {
+        "id": "aulos_player",
+        "title": "Aulos Player on Pottery",
+        "cdn_url": "/images/greek/aulos_player.jpg",
+        "keywords": [
+          "aulos",
+          "flute",
+          "music",
+          "wind instrument",
+          "performance"
+        ],
+        "category": "music_arts",
+        "era": "Classical (5th century BCE)",
+        "image_type": "photo",
+        "original_url": "https://upload.wikimedia.org/wikipedia/commons/4/48/Aulos_player_Louvre_G313.jpg"
+      },
+      {
+        "id": "ancient_lyre",
+        "title": "Ancient Greek Lyre",
+        "cdn_url": "/images/greek/ancient_lyre.jpg",
+        "keywords": [
+          "lyre",
+          "instrument",
+          "music",
+          "strings",
+          "apollo"
+        ],
+        "category": "music_arts",
+        "era": "Classical-Hellenistic",
+        "image_type": "photo",
+        "original_url": "https://upload.wikimedia.org/wikipedia/commons/9/97/Chelys_Lyre.jpg"
+      },
+      {
+        "id": "dance_scene",
+        "title": "Dancing Scene on Pottery",
+        "cdn_url": "/images/greek/dance_scene.jpg",
+        "keywords": [
+          "dance",
+          "performance",
+          "celebration",
+          "movement",
+          "art"
+        ],
+        "category": "music_arts",
+        "era": "Classical (5th century BCE)",
+        "image_type": "photo",
+        "original_url": "https://upload.wikimedia.org/wikipedia/commons/2/20/Danse_Banquet_Louvre_Cp10475.jpg"
+      }
+    ],
+    "science_medicine": [
+      {
+        "id": "hippocrates_bust",
+        "title": "Bust of Hippocrates",
+        "cdn_url": "/images/greek/hippocrates_bust.jpg",
+        "keywords": [
+          "hippocrates",
+          "medicine",
+          "doctor",
+          "physician",
+          "oath",
+          "healing"
+        ],
+        "category": "science_medicine",
+        "era": "Roman copy of Greek original",
+        "image_type": "photo",
+        "original_url": "https://upload.wikimedia.org/wikipedia/commons/7/7c/Hippocrates_pushkin01.jpg"
+      },
+      {
+        "id": "asclepius_statue",
+        "title": "Asclepius — God of Medicine",
+        "cdn_url": "/images/greek/asclepius_statue.jpg",
+        "keywords": [
+          "asclepius",
+          "medicine",
+          "healing",
+          "god",
+          "snake",
+          "staff"
+        ],
+        "category": "science_medicine",
+        "era": "Roman copy of Greek original",
+        "image_type": "photo",
+        "original_url": "https://upload.wikimedia.org/wikipedia/commons/6/6f/Asclepius_statue.jpg"
+      },
+      {
+        "id": "medical_tools",
+        "title": "Ancient Greek Medical Instruments",
+        "cdn_url": "/images/greek/medical_tools.jpg",
+        "keywords": [
+          "medicine",
+          "surgery",
+          "tools",
+          "instruments",
+          "medical"
+        ],
+        "category": "science_medicine",
+        "era": "Classical-Hellenistic",
+        "image_type": "photo",
+        "original_url": "https://upload.wikimedia.org/wikipedia/commons/8/82/Greek_surgical_instruments.jpg"
+      },
+      {
+        "id": "archimedes_manuscript",
+        "title": "Archimedes Palimpsest",
+        "cdn_url": "/images/greek/archimedes_manuscript.jpg",
+        "keywords": [
+          "archimedes",
+          "mathematics",
+          "science",
+          "geometry",
+          "manuscript"
+        ],
+        "category": "science_medicine",
+        "era": "Medieval copy of 3rd century BCE Greek original",
+        "image_type": "photo",
+        "original_url": "https://upload.wikimedia.org/wikipedia/commons/4/42/Archimedes_Palimpsest.jpg"
+      }
+    ],
+    "writing_literature": [
+      {
+        "id": "ancient_greek_papyrus",
+        "title": "Greek Papyrus Manuscript",
+        "cdn_url": "/images/greek/ancient_greek_papyrus.jpg",
+        "keywords": [
+          "writing",
+          "papyrus",
+          "manuscript",
+          "text",
+          "literature",
+          "homer"
+        ],
+        "category": "writing_literature",
+        "era": "Hellenistic-Roman",
+        "image_type": "photo",
+        "original_url": "https://upload.wikimedia.org/wikipedia/commons/a/a6/Papyrus_Homer.jpg"
+      },
+      {
+        "id": "homer_bust",
+        "title": "Bust of Homer",
+        "cdn_url": "/images/greek/homer_bust.jpg",
+        "keywords": [
+          "homer",
+          "poet",
+          "iliad",
+          "odyssey",
+          "epic",
+          "literature"
+        ],
+        "category": "writing_literature",
+        "era": "Roman copy of Hellenistic original",
+        "image_type": "photo",
+        "original_url": "https://upload.wikimedia.org/wikipedia/commons/1/1c/Homer_British_Museum.jpg"
+      },
+      {
+        "id": "writing_tablet",
+        "title": "Ancient Writing Tablet",
+        "cdn_url": "/images/greek/writing_tablet.jpg",
+        "keywords": [
+          "alphabet",
+          "writing",
+          "letters",
+          "inscription",
+          "text"
+        ],
+        "category": "writing_literature",
+        "era": "Archaic-Classical",
+        "image_type": "photo",
+        "original_url": "https://upload.wikimedia.org/wikipedia/commons/c/c0/Greek_alphabet_history.svg"
+      }
+    ],
+    "jewelry_decorative": [
+      {
+        "id": "gold_wreath",
+        "title": "Golden Olive Wreath",
+        "cdn_url": "/images/greek/gold_wreath.jpg",
+        "keywords": [
+          "gold",
+          "wreath",
+          "crown",
+          "jewelry",
+          "olive",
+          "victory"
+        ],
+        "category": "jewelry_decorative",
+        "era": "Classical (4th century BCE)",
+        "image_type": "photo",
+        "original_url": "https://upload.wikimedia.org/wikipedia/commons/0/04/Golden_wreath_NAMA_9_7th_c_BC.jpg"
+      },
+      {
+        "id": "gold_earrings",
+        "title": "Hellenistic Gold Earrings",
+        "cdn_url": "/images/greek/gold_earrings.jpg",
+        "keywords": [
+          "gold",
+          "earrings",
+          "jewelry",
+          "ornament",
+          "decoration"
+        ],
+        "category": "jewelry_decorative",
+        "era": "Hellenistic (3rd century BCE)",
+        "image_type": "photo",
+        "original_url": "https://upload.wikimedia.org/wikipedia/commons/f/f9/Gold_earring_Greek_3rd_century_BCE.jpg"
+      },
+      {
+        "id": "gold_diadem",
+        "title": "Golden Diadem",
+        "cdn_url": "/images/greek/gold_diadem.jpg",
+        "keywords": [
+          "gold",
+          "diadem",
+          "crown",
+          "royal",
+          "jewelry",
+          "ornament"
+        ],
+        "category": "jewelry_decorative",
+        "era": "Hellenistic",
+        "image_type": "photo",
+        "original_url": "https://upload.wikimedia.org/wikipedia/commons/3/3f/GD-EG-Caire-Mus%C3%A9e070.JPG"
+      },
+      {
+        "id": "bronze_mirror",
+        "title": "Bronze Mirror with Handle",
+        "cdn_url": "/images/greek/bronze_mirror.jpg",
+        "keywords": [
+          "bronze",
+          "mirror",
+          "decorative",
+          "handle",
+          "beauty"
+        ],
+        "category": "jewelry_decorative",
+        "era": "Classical (5th century BCE)",
+        "image_type": "photo",
+        "original_url": "https://upload.wikimedia.org/wikipedia/commons/7/78/Bronze_mirror_NAMA_7579_Athens_Greece.jpg"
+      }
+    ],
+    "pottery_specialized": [
+      {
+        "id": "lekythos_white_ground",
+        "title": "White-Ground Lekythos",
+        "cdn_url": "/images/greek/lekythos_white_ground.jpg",
+        "keywords": [
+          "lekythos",
+          "pottery",
+          "white ground",
+          "funerary",
+          "oil"
+        ],
+        "category": "pottery_specialized",
+        "era": "Classical (5th century BCE)",
+        "image_type": "photo",
+        "original_url": "https://upload.wikimedia.org/wikipedia/commons/b/b4/White_ground_lekythos_ARV_998_1_woman_and_her_maid_-_holding_out_a_jewel-box_%28meta%29_-_Syracuse_-_Italy_-_mid_5th_c_BCE.jpg"
+      },
+      {
+        "id": "hydria",
+        "title": "Hydria (Water Jar)",
+        "cdn_url": "/images/greek/hydria.jpg",
+        "keywords": [
+          "hydria",
+          "pottery",
+          "water",
+          "jar",
+          "vessel"
+        ],
+        "category": "pottery_specialized",
+        "era": "Archaic (6th century BCE)",
+        "image_type": "photo",
+        "original_url": "https://upload.wikimedia.org/wikipedia/commons/0/0a/Terracotta_hydria_%28water_jar%29_MET_DT217.jpg"
+      },
+      {
+        "id": "kylix_drinking_cup",
+        "title": "Kylix (Drinking Cup)",
+        "cdn_url": "/images/greek/kylix_drinking_cup.jpg",
+        "keywords": [
+          "kylix",
+          "cup",
+          "drinking",
+          "pottery",
+          "symposium",
+          "wine"
+        ],
+        "category": "pottery_specialized",
+        "era": "Classical (5th century BCE)",
+        "image_type": "photo",
+        "original_url": "https://upload.wikimedia.org/wikipedia/commons/6/61/Douris_cup_Eos_Memnon_Louvre_G115.jpg"
+      },
+      {
+        "id": "panathenaic_amphora",
+        "title": "Panathenaic Prize Amphora",
+        "cdn_url": "/images/greek/panathenaic_amphora.jpg",
+        "keywords": [
+          "amphora",
+          "panathenaic",
+          "prize",
+          "games",
+          "athena",
+          "pottery"
+        ],
+        "category": "pottery_specialized",
+        "era": "Classical (4th century BCE)",
+        "image_type": "photo",
+        "original_url": "https://upload.wikimedia.org/wikipedia/commons/d/d5/Panathenaic_prize_amphora_BM_B134.jpg"
+      },
+      {
+        "id": "oinochoe",
+        "title": "Oinochoe (Wine Jug)",
+        "cdn_url": "/images/greek/oinochoe.jpg",
+        "keywords": [
+          "oinochoe",
+          "jug",
+          "wine",
+          "pottery",
+          "pouring"
+        ],
+        "category": "pottery_specialized",
+        "era": "Classical (5th century BCE)",
+        "image_type": "photo",
+        "original_url": "https://upload.wikimedia.org/wikipedia/commons/2/20/Oinochoe_Staatliche_Antikensammlungen_8482.jpg"
+      }
+    ],
+    "maps_geography": [
+      {
+        "id": "ancient_greece_map",
+        "title": "Map of Ancient Greece",
+        "cdn_url": "/images/greek/ancient_greece_map.svg",
+        "keywords": [
+          "map",
+          "greece",
+          "geography",
+          "city states",
+          "mediterranean"
+        ],
+        "category": "maps_geography",
+        "era": "Classical period map",
+        "image_type": "svg_placeholder",
+        "original_url": "https://upload.wikimedia.org/wikipedia/commons/9/9f/Ancient_Greece_map-en.svg"
+      },
+      {
+        "id": "alexander_empire_map",
+        "title": "Alexander's Empire Map",
+        "cdn_url": "/images/greek/alexander_empire_map.jpg",
+        "keywords": [
+          "alexander",
+          "empire",
+          "map",
+          "conquest",
+          "macedon",
+          "expansion"
+        ],
+        "category": "maps_geography",
+        "era": "Hellenistic period map",
+        "image_type": "photo",
+        "original_url": "https://upload.wikimedia.org/wikipedia/commons/4/40/MacedonEmpire.jpg"
+      },
+      {
+        "id": "aegean_islands",
+        "title": "Santorini (Thera) Island",
+        "cdn_url": "/images/greek/aegean_islands.jpg",
+        "keywords": [
+          "santorini",
+          "thera",
+          "island",
+          "aegean",
+          "volcano",
+          "geography"
+        ],
+        "category": "maps_geography",
+        "era": "Modern photo of ancient site",
+        "image_type": "photo",
+        "original_url": "https://upload.wikimedia.org/wikipedia/commons/2/2f/Santorini_Caldera_Panorama_A.jpg"
+      }
+    ],
+    "frescoes_paintings": [
+      {
+        "id": "minoan_dolphins",
+        "title": "Dolphin Fresco from Knossos",
+        "cdn_url": "/images/greek/minoan_dolphins.jpg",
+        "keywords": [
+          "fresco",
+          "dolphins",
+          "minoan",
+          "knossos",
+          "painting",
+          "marine"
+        ],
+        "category": "frescoes_paintings",
+        "era": "Bronze Age (1500 BCE)",
+        "image_type": "photo",
+        "original_url": "https://upload.wikimedia.org/wikipedia/commons/f/fc/Dolphins_fresco_in_the_Megaron_of_the_Queen_in_Knossos.jpg"
+      },
+      {
+        "id": "akrotiri_spring_fresco",
+        "title": "Spring Fresco from Akrotiri",
+        "cdn_url": "/images/greek/akrotiri_spring_fresco.jpg",
+        "keywords": [
+          "fresco",
+          "flowers",
+          "akrotiri",
+          "santorini",
+          "painting",
+          "nature"
+        ],
+        "category": "frescoes_paintings",
+        "era": "Bronze Age (1600 BCE)",
+        "image_type": "photo",
+        "original_url": "https://upload.wikimedia.org/wikipedia/commons/1/13/Spring_Fresco%2C_Akrotiri%2C_Greece.jpg"
+      },
+      {
+        "id": "tomb_painting_diver",
+        "title": "Tomb of the Diver",
+        "cdn_url": "/images/greek/tomb_painting_diver.jpg",
+        "keywords": [
+          "tomb",
+          "painting",
+          "diver",
+          "fresco",
+          "funeral",
+          "afterlife"
+        ],
+        "category": "frescoes_paintings",
+        "era": "Classical (480 BCE)",
+        "image_type": "photo",
+        "original_url": "https://upload.wikimedia.org/wikipedia/commons/6/69/Paestum_Tomb_of_the_Diver.jpg"
+      }
+    ],
+    "heroes_mythology": [
+      {
+        "id": "hercules_nemean_lion",
+        "title": "Hercules and Nemean Lion",
+        "cdn_url": "/images/greek/hercules_nemean_lion.jpg",
+        "keywords": [
+          "hercules",
+          "heracles",
+          "hero",
+          "lion",
+          "nemean",
+          "labor",
+          "mythology"
+        ],
+        "category": "heroes_mythology",
+        "era": "Archaic (6th century BCE)",
+        "image_type": "photo",
+        "original_url": "https://upload.wikimedia.org/wikipedia/commons/b/b8/Herakles_Nemean_Lion_Louvre_F107.jpg"
+      },
+      {
+        "id": "perseus_medusa",
+        "title": "Perseus with Medusa's Head",
+        "cdn_url": "/images/greek/perseus_medusa.jpg",
+        "keywords": [
+          "perseus",
+          "medusa",
+          "hero",
+          "gorgon",
+          "mythology",
+          "head"
+        ],
+        "category": "heroes_mythology",
+        "era": "Roman copy of Hellenistic original",
+        "image_type": "photo",
+        "original_url": "https://upload.wikimedia.org/wikipedia/commons/6/68/Perseus_Medusa_Musei_Capitolini_MC1131.jpg"
+      },
+      {
+        "id": "achilles_ajax_dice",
+        "title": "Achilles and Ajax Playing Dice",
+        "cdn_url": "/images/greek/achilles_ajax_dice.jpg",
+        "keywords": [
+          "achilles",
+          "ajax",
+          "hero",
+          "trojan war",
+          "game",
+          "warriors"
+        ],
+        "category": "heroes_mythology",
+        "era": "Archaic (540 BCE)",
+        "image_type": "photo",
+        "original_url": "https://upload.wikimedia.org/wikipedia/commons/8/88/Exekias_Amphora_with_Achilles_and_Ajax.jpg"
+      },
+      {
+        "id": "theseus_minotaur",
+        "title": "Theseus and the Minotaur",
+        "cdn_url": "/images/greek/theseus_minotaur.jpg",
+        "keywords": [
+          "theseus",
+          "minotaur",
+          "hero",
+          "labyrinth",
+          "crete",
+          "mythology"
+        ],
+        "category": "heroes_mythology",
+        "era": "Archaic (6th century BCE)",
+        "image_type": "photo",
+        "original_url": "https://upload.wikimedia.org/wikipedia/commons/c/c2/Theseus_Minotaur_Louvre_F33.jpg"
+      }
+    ],
+    "historical_figures": [
+      {
+        "id": "alexander_bust",
+        "title": "Alexander the Great",
+        "cdn_url": "/images/greek/alexander_bust.jpg",
+        "keywords": [
+          "alexander",
+          "macedon",
+          "conqueror",
+          "king",
+          "empire"
+        ],
+        "category": "historical_figures",
+        "era": "Hellenistic (3rd century BCE)",
+        "image_type": "photo",
+        "original_url": "https://upload.wikimedia.org/wikipedia/commons/e/e1/Alexander_the_Great_mosaic.jpg"
+      },
+      {
+        "id": "pericles_bust",
+        "title": "Pericles",
+        "cdn_url": "/images/greek/pericles_bust.jpg",
+        "keywords": [
+          "pericles",
+          "statesman",
+          "athens",
+          "democracy",
+          "golden age"
+        ],
+        "category": "historical_figures",
+        "era": "Roman copy of Classical original",
+        "image_type": "photo",
+        "original_url": "https://upload.wikimedia.org/wikipedia/commons/0/08/Pericles_Pio-Clementino_Inv269_n2.jpg"
+      },
+      {
+        "id": "leonidas_sparta",
+        "title": "Leonidas Monument",
+        "cdn_url": "/images/greek/leonidas_sparta.jpg",
+        "keywords": [
+          "leonidas",
+          "sparta",
+          "thermopylae",
+          "warrior",
+          "king",
+          "300"
+        ],
+        "category": "historical_figures",
+        "era": "Modern statue commemorating Classical hero",
+        "image_type": "photo",
+        "original_url": "https://upload.wikimedia.org/wikipedia/commons/3/3e/Leonidas_I.jpg"
+      }
+    ]
+  }
+}

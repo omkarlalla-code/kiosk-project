@@ -55,11 +55,11 @@ class KioskApp {
     console.log('Kiosk App initialized');
   }
 
-  handleAudioTrack(track) {
+  handleAudioTrack(track, audioElement) {
     console.log('Received audio track');
     // Audio is automatically played by LiveKit client
-    // Use audio context to get playout timing
-    this.imageScheduler.setAudioContext(this.livekit.getAudioContext());
+    // Pass audio context and element to image scheduler for timing
+    this.imageScheduler.setAudioContext(this.livekit.getAudioContext(), audioElement);
   }
 
   handleDataMessage(message) {
