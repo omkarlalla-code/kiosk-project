@@ -1,0 +1,558 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Greek Civilization Kiosk</title>
+    <style>
+        /* --- Base & Typography --- */
+        :root {
+            --bg-color: #121212;
+            --surface-color: #1E1E1E;
+            --primary-color: #3f51b5; /* Indigo */
+            --primary-variant: #303f9f;
+            --secondary-color: #03a9f4; /* Light Blue */
+            --text-color: #E0E0E0;
+            --text-secondary: #A0A0A0;
+            --success-color: #4CAF50;
+            --error-color: #f44336;
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        html, body {
+            width: 100%;
+            height: 100%;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            overflow: hidden;
+        }
+        button {
+            cursor: pointer;
+            border: none;
+            border-radius: 6px;
+            padding: 15px 30px;
+            font-size: 1.2rem;
+            font-weight: 600;
+            color: white;
+            background-color: var(--primary-color);
+            transition: background-color 0.2s ease, transform 0.2s ease;
+        }
+        button:hover {
+            background-color: var(--primary-variant);
+            transform: translateY(-2px);
+        }
+        button:disabled {
+            background-color: #444;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        /* --- View States --- */
+        .view {
+            width: 100%;
+            height: 100%;
+            display: none; /* Hidden by default */
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+        }
+        .view.visible {
+            display: flex; /* Show active view */
+        }
+
+        /* --- Idle View (Screensaver) --- */
+        #idle-view {
+            background-color: #000;
+        }
+        #screensaver {
+            width: 100%;
+            height: 100%;
+            position: relative;
+        }
+        #screensaver img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            position: absolute;
+            top: 0;
+            left: 0;
+            opacity: 0;
+            transition: opacity 1.5s ease-in-out;
+        }
+        #screensaver img.visible {
+            opacity: 1;
+        }
+        .idle-overlay {
+            position: absolute;
+            inset: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            background: rgba(0, 0, 0, 0.4);
+        }
+        .idle-title {
+            font-size: 4rem;
+            font-weight: 700;
+            text-shadow: 2px 2px 8px rgba(0,0,0,0.7);
+        }
+        .idle-subtitle {
+            font-size: 1.5rem;
+            margin-top: 1rem;
+            color: var(--text-secondary);
+            text-shadow: 1px 1px 4px rgba(0,0,0,0.7);
+        }
+        #start-kiosk-btn {
+            margin-top: 4rem;
+            font-size: 1.5rem;
+            padding: 20px 40px;
+            background-color: var(--secondary-color); /* Use secondary color */
+        }
+        #start-kiosk-btn:hover {
+            background-color: #0288d1; /* Darker shade of light blue */
+        }
+
+        /* --- Payment View --- */
+        #payment-view {
+            gap: 2rem;
+        }
+        .payment-box {
+            background-color: var(--surface-color);
+            padding: 3rem;
+            border-radius: 12px;
+            text-align: center;
+            max-width: 500px;
+        }
+        .payment-title { font-size: 2rem; margin-bottom: 1rem; }
+        .payment-instructions { font-size: 1rem; color: var(--text-secondary); margin-bottom: 2rem; }
+        #qr-code { width: 300px; height: 300px; background-color: white; border-radius: 8px; margin: 0 auto; }
+        #qr-code-img { width: 100%; height: 100%; border-radius: 8px; }
+        #payment-status { margin-top: 2rem; font-size: 1.2rem; font-weight: 500; }
+        #payment-status.success { color: var(--success-color); }
+        #payment-status.error { color: var(--error-color); }
+
+        /* --- Active View (Chat) --- */
+        #active-view {
+            flex-direction: column;
+        }
+        .image-display {
+            flex: 3; /* 75% height */
+            width: 100%;
+            position: relative;
+            background-color: #000;
+        }
+        .main-image {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+            position: absolute;
+            top: 0;
+            left: 0;
+            opacity: 0;
+            transition: opacity 0.5s ease-in-out;
+        }
+        .main-image.visible {
+            opacity: 1;
+        }
+        .image-caption {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            padding: 2rem 3rem;
+            background: rgba(0,0,0,0.6);
+            font-size: 1.8rem;
+            opacity: 0;
+            transition: opacity 0.5s ease;
+        }
+        .image-caption.visible {
+            opacity: 1;
+        }
+
+        .interaction-panel {
+            flex: 1; /* 25% height */
+            width: 100%;
+            background-color: var(--surface-color);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 2rem;
+            border-top: 2px solid #000;
+        }
+        .stt-display {
+            font-size: 2rem;
+            color: var(--text-secondary);
+        }
+        .stt-display .stt-final {
+            color: var(--text-color);
+            font-weight: 500;
+        }
+        #mic-button {
+            width: 80px;
+            height: 80px;
+            border-radius: 50%;
+            font-size: 2.5rem;
+            margin-left: 3rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        #mic-button.listening {
+            background-color: var(--error-color);
+            animation: pulse 1.5s infinite;
+        }
+        @keyframes pulse {
+            0%, 100% { box-shadow: 0 0 0 0 rgba(244, 67, 54, 0.7); }
+            50% { box-shadow: 0 0 0 15px rgba(244, 67, 54, 0); }
+        }
+
+    </style>
+</head>
+<body>
+    <!-- Idle View (Screensaver) -->
+    <div id="idle-view" class="view visible">
+        <div id="screensaver"></div>
+        <div class="idle-overlay">
+            <h1 class="idle-title">Journey into Ancient Greece</h1>
+            <p class="idle-subtitle">An Interactive Experience</p>
+            <button id="start-kiosk-btn">Touch to Begin</button>
+        </div>
+    </div>
+
+    <!-- Payment View -->
+    <div id="payment-view" class="view">
+        <div class="payment-box">
+            <h2 class="payment-title">Unlock Your Journey</h2>
+            <p class="payment-instructions">Scan the QR code with your UPI app to start the interactive tour.</p>
+            <div id="qr-code">
+                <!-- QR Code will be generated here -->
+                <img id="qr-code-img" src="" alt="Scan to Pay">
+            </div>
+            <p id="payment-status">Waiting for payment...</p>
+        </div>
+    </div>
+
+    <!-- Active View (Main Interaction) -->
+    <div id="active-view" class="view">
+        <div class="image-display">
+            <img id="image-buffer-1" class="main-image" alt="Greek Civilization">
+            <img id="image-buffer-2" class="main-image" alt="Greek Civilization">
+            <div id="image-caption" class="image-caption"></div>
+        </div>
+        <div class="interaction-panel">
+            <div class="stt-display">
+                <span id="stt-final" class="stt-final"></span>
+                <span id="stt-interim"></span>
+            </div>
+            <button id="mic-button">🎤</button>
+        </div>
+    </div>
+
+    <script src="/js/livekit-client.umd.js"></script>
+    <script>
+        const ORCHESTRATOR_URL = 'http://localhost:3000';
+        const KIOSK_ID = 'web-kiosk-002';
+        const SCREENSAVER_IMAGES = ['/screensaver/img1.svg', '/screensaver/img2.svg', '/screensaver/img3.svg'];
+
+        // --- State Management ---
+        const AppState = {
+            IDLE: 'idle',
+            PAYMENT: 'payment',
+            ACTIVE: 'active'
+        };
+        let currentState = AppState.IDLE;
+
+        // --- DOM Elements ---
+        const views = {
+            idle: document.getElementById('idle-view'),
+            payment: document.getElementById('payment-view'),
+            active: document.getElementById('active-view'),
+        };
+        const startKioskBtn = document.getElementById('start-kiosk-btn');
+        const micBtn = document.getElementById('mic-button');
+        const sttFinal = document.getElementById('stt-final');
+        const sttInterim = document.getElementById('stt-interim');
+
+        // --- App Logic ---
+        let livekit = { room: null, sessionId: null };
+        let stt = { recognition: null, isListening: false };
+        let screensaver = { timer: null, currentImageIndex: 0 };
+        let imageSync = { buffer1: document.getElementById('image-buffer-1'), buffer2: document.getElementById('image-buffer-2'), activeBuffer: 1, timeOffset: 0, scheduled: new Map() };
+        let audioPlayer = { context: null, queue: [], isPlaying: false };
+        
+        function changeState(newState) {
+            if (!views[newState]) return;
+            views[currentState].classList.remove('visible');
+            views[newState].classList.add('visible');
+            currentState = newState;
+            
+            // State-specific actions
+            if (currentState === AppState.IDLE) {
+                startScreensaver();
+                if (livekit.room) livekit.room.disconnect();
+            } else if (currentState === AppState.PAYMENT) {
+                stopScreensaver();
+                handlePayment();
+            } else if (currentState === AppState.ACTIVE) {
+                startChatSession();
+            }
+        }
+
+        // --- Screensaver Logic ---
+        function startScreensaver() {
+            const screensaverEl = document.getElementById('screensaver');
+            if (!screensaverEl) return;
+            
+            // Preload images
+            if (screensaverEl.children.length === 0) {
+                SCREENSAVER_IMAGES.forEach(src => {
+                    const img = document.createElement('img');
+                    img.src = src;
+                    screensaverEl.appendChild(img);
+                });
+            }
+
+            const images = screensaverEl.querySelectorAll('img');
+            if (images.length === 0) return;
+
+            const cycle = () => {
+                images.forEach(img => img.classList.remove('visible'));
+                images[screensaver.currentImageIndex].classList.add('visible');
+                screensaver.currentImageIndex = (screensaver.currentImageIndex + 1) % images.length;
+            };
+
+            cycle(); // Show first image immediately
+            screensaver.timer = setInterval(cycle, 7000);
+        }
+        function stopScreensaver() {
+            if (screensaver.timer) clearInterval(screensaver.timer);
+        }
+
+        // --- Payment Logic ---
+        async function handlePayment() {
+            const qrImg = document.getElementById('qr-code-img');
+            const paymentStatus = document.getElementById('payment-status');
+            try {
+                // In a real scenario, this would call the orchestrator to get a QR code
+                // For this demo, we'll use a placeholder and simulate success
+                paymentStatus.textContent = 'Generating QR Code...';
+                qrImg.src = `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=upi://pay?pa=dummy@upi&pn=Kiosk&am=10`; // Dummy QR
+                paymentStatus.textContent = 'Please scan to pay. Waiting for confirmation...';
+                
+                // Simulate successful payment after a delay
+                setTimeout(() => {
+                    paymentStatus.textContent = 'Payment Successful! Starting your session...';
+                    paymentStatus.classList.add('success');
+                    setTimeout(() => changeState(AppState.ACTIVE), 2000);
+                }, 8000);
+
+            } catch (error) {
+                paymentStatus.textContent = 'Could not initiate payment. Please try again.';
+                paymentStatus.classList.add('error');
+            }
+        }
+
+        // --- Active Session Logic ---
+        async function startChatSession() {
+            sttFinal.textContent = "Hi! What would you like to know about ancient Greece?";
+            try {
+                // Connect to LiveKit for DataChannel
+                const response = await fetch(`${ORCHESTRATOR_URL}/start_session`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ kiosk_id: KIOSK_ID })
+                });
+                if (!response.ok) throw new Error('Failed to create session');
+                const { session_id, token, livekit_url } = await response.json();
+                livekit.sessionId = session_id;
+
+                livekit.room = new LivekitClient.Room();
+                await livekit.room.connect(livekit_url, token);
+                console.log('LiveKit DataChannel connected.');
+
+                livekit.room.on(LivekitClient.RoomEvent.DataReceived, (payload) => {
+                    const msg = JSON.parse(new TextDecoder().decode(payload));
+                    if (msg.type === 'img_show') {
+                        scheduleImage(msg);
+                    } else if (msg.type === 'time_sync' && msg.server_time) {
+                        imageSync.timeOffset = msg.server_time - performance.now();
+                    } else if (msg.type === 'end_chat') {
+                        console.log('[END_CHAT] Signal received from LLM - ending session');
+                        setTimeout(() => endSession(), 3000); // Give time for final audio to play
+                    }
+                });
+
+            } catch (error) {
+                console.error("LiveKit connection failed:", error);
+                sttFinal.textContent = "Error: Could not connect to the session.";
+            }
+
+            // Start STT
+            startSTT();
+        }
+
+        function endSession() {
+            console.log('[SESSION] Ending session...');
+
+            // Stop STT
+            if (stt.recognition) {
+                stt.recognition.stop();
+                stt.isListening = false;
+            }
+
+            // Disconnect LiveKit
+            if (livekit.room) {
+                livekit.room.disconnect();
+                livekit.room = null;
+                livekit.sessionId = null;
+            }
+
+            // Clear audio queue
+            audioPlayer.queue = [];
+            audioPlayer.isPlaying = false;
+
+            // Clear image sync
+            imageSync.scheduled.clear();
+
+            // Return to idle
+            changeState(AppState.IDLE);
+        }
+
+        function startSTT() {
+            const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+            if (!SpeechRecognition) {
+                sttFinal.textContent = "Speech recognition is not supported on this browser.";
+                return;
+            }
+            stt.recognition = new SpeechRecognition();
+            stt.recognition.continuous = true;
+            stt.recognition.interimResults = true;
+            stt.recognition.lang = 'en-US';
+
+            stt.recognition.onstart = () => {
+                stt.isListening = true;
+                micBtn.classList.add('listening');
+                micBtn.textContent = '...';
+            };
+            stt.recognition.onend = () => {
+                stt.isListening = false;
+                micBtn.classList.remove('listening');
+                micBtn.textContent = '🎤';
+                if (currentState === AppState.ACTIVE) stt.recognition.start(); // Auto-restart
+            };
+            stt.recognition.onresult = (event) => {
+                let final = '';
+                let interim = '';
+                for (let i = event.resultIndex; i < event.results.length; i++) {
+                    if (event.results[i].isFinal) final += event.results[i][0].transcript;
+                    else interim += event.results[i][0].transcript;
+                }
+                sttFinal.textContent = final;
+                sttInterim.textContent = interim;
+                if (final) sendToLLM(final);
+            };
+            stt.recognition.start();
+        }
+
+        async function sendToLLM(text) {
+            try {
+                const response = await fetch(`${ORCHESTRATOR_URL}/converse`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ session_id: livekit.sessionId, message: text })
+                });
+                if (!response.ok) throw new Error('LLM request failed');
+                const data = await response.json();
+                
+                if (data.audio_base64) {
+                    playAudio(data.audio_base64);
+                }
+            } catch (error) {
+                console.error("LLM Error:", error);
+                sttFinal.textContent = "Sorry, I had trouble responding.";
+            }
+        }
+
+        async function playAudio(base64) {
+            audioPlayer.queue.push(base64);
+            console.log(`[AUDIO_QUEUE] Added to queue (size: ${audioPlayer.queue.length})`);
+
+            if (!audioPlayer.isPlaying) {
+                playNextInQueue();
+            }
+        }
+
+        async function playNextInQueue() {
+            if (audioPlayer.queue.length === 0) {
+                audioPlayer.isPlaying = false;
+                console.log('[AUDIO_QUEUE] Queue empty');
+                return;
+            }
+
+            audioPlayer.isPlaying = true;
+            const base64 = audioPlayer.queue.shift();
+            console.log(`[AUDIO_QUEUE] Playing (remaining: ${audioPlayer.queue.length})`);
+
+            if (!audioPlayer.context) audioPlayer.context = new (window.AudioContext || window.webkitAudioContext)();
+
+            try {
+                const binary = atob(base64);
+                const bytes = new Uint8Array(binary.length);
+                for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+
+                const buffer = await audioPlayer.context.decodeAudioData(bytes.buffer);
+                const source = audioPlayer.context.createBufferSource();
+                source.buffer = buffer;
+                source.connect(audioPlayer.context.destination);
+
+                source.onended = () => {
+                    console.log('[AUDIO_QUEUE] Audio finished');
+                    setTimeout(() => playNextInQueue(), 100);
+                };
+
+                source.start(0);
+            } catch (error) {
+                console.error('[AUDIO_QUEUE] Playback error:', error);
+                setTimeout(() => playNextInQueue(), 100);
+            }
+        }
+
+        function scheduleImage(imgData) {
+            const localPlayoutTime = imgData.playout_ts - imageSync.timeOffset;
+            const delay = localPlayoutTime - performance.now();
+            
+            if (delay > -200) { // Tolerate small lateness
+                setTimeout(() => showImage(imgData), Math.max(0, delay));
+            }
+        }
+
+        function showImage(imgData) {
+            const activeImg = imageSync.activeBuffer === 1 ? imageSync.buffer1 : imageSync.buffer2;
+            const inactiveImg = imageSync.activeBuffer === 1 ? imageSync.buffer2 : imageSync.buffer1;
+            
+            inactiveImg.src = imgData.cdn_url;
+            
+            activeImg.classList.remove('visible');
+            inactiveImg.classList.add('visible');
+            
+            const captionEl = document.getElementById('image-caption');
+            captionEl.textContent = imgData.caption || '';
+            captionEl.classList.add('visible');
+            
+            imageSync.activeBuffer = imageSync.activeBuffer === 1 ? 2 : 1;
+        }
+
+        // --- Event Listeners ---
+        startKioskBtn.addEventListener('click', () => changeState(AppState.PAYMENT));
+        micBtn.addEventListener('click', () => {
+            if (stt.isListening) stt.recognition.stop();
+            else stt.recognition.start();
+        });
+
+        // --- Initial Load ---
+        window.addEventListener('load', () => {
+            changeState(AppState.IDLE);
+        });
+    </script>
+</body>
+</html>

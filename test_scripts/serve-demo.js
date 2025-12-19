@@ -7,11 +7,11 @@ const PORT = 8080;
 const server = http.createServer((req, res) => {
   let filePath = req.url;
   if (filePath === '/') {
-    filePath = '/livekit-audio-demo.html';
+    filePath = '/index.html';
   }
 
   // Serve from public directory
-  filePath = path.join(__dirname, 'public', filePath);
+  filePath = path.join(__dirname, '..', 'public', filePath);
 
   const extname = String(path.extname(filePath)).toLowerCase();
   const mimeTypes = {
@@ -48,6 +48,6 @@ const server = http.createServer((req, res) => {
 
 server.listen(PORT, () => {
   console.log(`\n🌐 Demo Server Running!`);
-  console.log(`\n📍 Open: http://localhost:${PORT}/livekit-audio-demo.html\n`);
+  console.log(`\n📍 Open: http://localhost:${PORT}/index.html\n`);
   console.log(`Press Ctrl+C to stop\n`);
 });

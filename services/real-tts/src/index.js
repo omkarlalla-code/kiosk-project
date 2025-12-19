@@ -22,21 +22,33 @@ const fetch = require('node-fetch');
 const OpenAI = require('openai');
 const prism = require('prism-media');
 const ffmpegPath = require('ffmpeg-static');
+const { createClient } = require('@deepgram/sdk');
 
 const app = express();
 const PORT = process.env.PORT || 3002;
 
-// OpenAI Configuration
-const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
-const USE_OPENAI = OPENAI_API_KEY && OPENAI_API_KEY.length > 0;
-const openai = USE_OPENAI ? new OpenAI({ apiKey: OPENAI_API_KEY }) : null;
+// TTS Provider Configuration
+const TTS_PROVIDER = process.env.TTS_PROVIDER || 'deepgram'; // deepgram, elevenlabs, or openai
+
+// Deepgram Configuration (primary)
+const DEEPGRAM_API_KEY = process.env.DEEPGRAM_API_KEY;
+const DEEPGRAM_VOICE = process.env.DEEPGRAM_VOICE || 'aura-asteria-en';
+const USE_DEEPGRAM = DEEPGRAM_API_KEY && DEEPGRAM_API_KEY.length > 0;
+const deepgram = USE_DEEPGRAM ? createClient(DEEPGRAM_API_KEY) : null;
 
 // ElevenLabs Configuration (fallback)
 const ELEVENLABS_API_KEY = process.env.ELEVENLABS_API_KEY;
 const ELEVENLABS_VOICE_ID = process.env.ELEVENLABS_VOICE_ID || 'EXAVITQu4vr4xnSDxMaL';
 const USE_ELEVENLABS = ELEVENLABS_API_KEY && ELEVENLABS_API_KEY.length > 0;
 
+// OpenAI Configuration (fallback)
+const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
+const USE_OPENAI = OPENAI_API_KEY && OPENAI_API_KEY.length > 0;
+const openai = USE_OPENAI ? new OpenAI({ apiKey: OPENAI_API_KEY }) : null;
+
 // Debug logging
+console.log(`🎤 TTS Provider: ${TTS_PROVIDER}`);
+console.log(`🔑 Deepgram API Key: ${DEEPGRAM_API_KEY ? DEEPGRAM_API_KEY.substring(0, 10) + '...' : 'NOT SET'}`);
 console.log(`🔑 ElevenLabs API Key: ${ELEVENLABS_API_KEY ? ELEVENLABS_API_KEY.substring(0, 10) + '...' : 'NOT SET'}`);
 
 // TTS Cache Configuration
@@ -182,13 +194,18 @@ async function streamFromElevenLabs(text) {
 app.use(express.json());
 
 app.get('/health', (req, res) => {
-  const engine = USE_OPENAI ? 'openai-tts-1' : (USE_ELEVENLABS ? 'elevenlabs' : 'espeak/mock');
+  const engine = USE_DEEPGRAM && TTS_PROVIDER === 'deepgram'
+    ? 'deepgram'
+    : (USE_ELEVENLABS ? 'elevenlabs' : (USE_OPENAI ? 'openai-tts-1' : 'espeak/mock'));
   res.json({
     status: 'ok',
     service: 'real-tts',
     engine,
-    openai_enabled: USE_OPENAI,
+    provider: TTS_PROVIDER,
+    deepgram_enabled: USE_DEEPGRAM,
+    deepgram_voice: DEEPGRAM_VOICE,
     elevenlabs_enabled: USE_ELEVENLABS,
+    openai_enabled: USE_OPENAI,
     cache_enabled: ENABLE_CACHE
   });
 });
@@ -767,6 +784,74 @@ server.on('upgrade', (request, socket, head) => {
   });
 });
 
+/**
+ * Synthesize text using Deepgram TTS API
+ * Returns MP3 buffer (converts from WAV)
+ */
+async function synthesizeWithDeepgram(text) {
+  console.log(`🎤 Calling Deepgram TTS API (${text.length} chars, voice: ${DEEPGRAM_VOICE})`);
+
+  try {
+    const response = await deepgram.speak.request(
+      { text },
+      {
+        model: DEEPGRAM_VOICE,
+        encoding: 'linear16',
+        sample_rate: 48000,
+        container: 'wav'
+      }
+    );
+
+    // Get the audio stream
+    const stream = await response.getStream();
+    if (!stream) {
+      throw new Error('No audio stream returned from Deepgram');
+    }
+
+    // Collect chunks into buffer
+    const chunks = [];
+    for await (const chunk of stream) {
+      chunks.push(chunk);
+    }
+
+    const wavBuffer = Buffer.concat(chunks);
+    console.log(`✅ Received WAV audio from Deepgram: ${(wavBuffer.length / 1024).toFixed(1)}KB`);
+
+    // Convert WAV to MP3 using ffmpeg
+    return new Promise((resolve, reject) => {
+      const ffmpeg = spawn(ffmpegPath, [
+        '-f', 'wav',
+        '-i', 'pipe:0',
+        '-f', 'mp3',
+        '-ar', '48000',
+        '-ac', '1',
+        '-b:a', '128k',
+        'pipe:1'
+      ]);
+
+      const mp3Chunks = [];
+      ffmpeg.stdout.on('data', (chunk) => mp3Chunks.push(chunk));
+      ffmpeg.stderr.on('data', () => {}); // Suppress ffmpeg logs
+
+      ffmpeg.on('close', (code) => {
+        if (code === 0) {
+          const mp3Buffer = Buffer.concat(mp3Chunks);
+          console.log(`✅ Converted to MP3: ${(mp3Buffer.length / 1024).toFixed(1)}KB`);
+          resolve(mp3Buffer);
+        } else {
+          reject(new Error(`FFmpeg conversion failed with code ${code}`));
+        }
+      });
+
+      ffmpeg.stdin.write(wavBuffer);
+      ffmpeg.stdin.end();
+    });
+  } catch (error) {
+    console.error('❌ Deepgram TTS error:', error.message);
+    throw error;
+  }
+}
+
 // New endpoint to get MP3 directly
 app.post('/synthesize', async (req, res) => {
   const { text } = req.body;
@@ -774,7 +859,20 @@ app.post('/synthesize', async (req, res) => {
     return res.status(400).json({ error: 'text is required' });
   }
 
-  // Prioritize ElevenLabs if configured
+  // Prioritize Deepgram if configured
+  if (USE_DEEPGRAM && TTS_PROVIDER === 'deepgram') {
+    try {
+      const mp3Buffer = await synthesizeWithDeepgram(text);
+      res.setHeader('Content-Type', 'audio/mpeg');
+      return res.send(mp3Buffer);
+    } catch (error) {
+      console.error('❌ Deepgram synthesis failed:', error.message);
+      console.log('Falling back to ElevenLabs...');
+      // Fall through to ElevenLabs
+    }
+  }
+
+  // Fallback to ElevenLabs if Deepgram fails or not configured
   if (USE_ELEVENLABS) {
     try {
       console.log(`🎤 Calling ElevenLabs API for direct synthesis (${text.length} chars)`);

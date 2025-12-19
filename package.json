@@ -31,5 +31,8 @@
   },
   "dependencies": {
     "livekit-client": "^2.16.1"
+  },
+  "devDependencies": {
+    "electron": "^39.2.7"
   }
 }
