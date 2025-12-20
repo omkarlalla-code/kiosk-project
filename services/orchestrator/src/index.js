@@ -218,12 +218,15 @@ app.post('/start_session', async (req, res) => {
 
     const jwt = await token.toJwt();
 
+    const SESSION_DURATION_SECONDS = 300; // 5 minutes
+
     // Store session
     sessions.set(session_id, {
       session_id,
       kiosk_id,
       room_name,
       created_at: Date.now(),
+      duration_seconds: SESSION_DURATION_SECONDS,
       status: 'active',
       last_activity: Date.now(),
     });
@@ -232,14 +235,14 @@ app.post('/start_session', async (req, res) => {
     refreshSessionTimeout(session_id);
 
     console.log(`Created session ${session_id} for kiosk ${kiosk_id}, room: ${room_name}`);
-    console.log(`  Timeout: ${SESSION_TIMEOUT_MS}ms`);
+    console.log(`  Duration: ${SESSION_DURATION_SECONDS}s`);
 
     res.json({
       session_id,
       token: jwt,
       livekit_url: LIVEKIT_URL,
       room_name,
-      timeout_ms: SESSION_TIMEOUT_MS,
+      duration_seconds: SESSION_DURATION_SECONDS,
     });
   } catch (error) {
     console.error('Error creating session:', error);
@@ -308,6 +311,63 @@ app.get('/sessions', (req, res) => {
   const activeSessions = Array.from(sessions.values()).filter(s => s.status === 'active');
   res.json({ sessions: activeSessions, count: activeSessions.length });
 });
+
+// POST /session/:sessionId/end - Trigger final goodbye message
+app.post('/session/:sessionId/end', async (req, res) => {
+  const { sessionId } = req.params;
+  const session = sessions.get(sessionId);
+
+  if (!session) {
+    return res.status(404).json({ error: 'Session not found' });
+  }
+
+  console.log(`🔚 Session ${sessionId} timer ended. Generating goodbye message.`);
+
+  try {
+    // 1. Call LLM for a goodbye message
+    const llmResponse = await fetch(`${LLM_SERVICE_URL}/chat`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        session_id: sessionId,
+        message: "The user's session time is up. Say a very brief, friendly goodbye.",
+        stream: false
+      })
+    });
+    if (!llmResponse.ok) throw new Error('LLM service failed for goodbye message.');
+    
+    const llmData = await llmResponse.json();
+    const goodbyeText = llmData.response.speech_response || "Thank you for visiting. Goodbye!";
+
+    // 2. Get TTS audio for the goodbye message
+    const ttsHttpUrl = TTS_SERVICE_URL.replace('ws://', 'http://').replace(/\/ws$/, '');
+    const ttsResponse = await fetch(`${ttsHttpUrl}/synthesize`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text: goodbyeText }),
+    });
+    if (!ttsResponse.ok) throw new Error('TTS service failed for goodbye message.');
+
+    const audioBuffer = await ttsResponse.buffer();
+    const audioBase64 = audioBuffer.toString('base64');
+
+    // 3. Send final audio to client
+    res.json({
+      success: true,
+      audio_base64: audioBase64,
+    });
+
+    // 4. Clean up the session on the server
+    await endSession(sessionId, 'timer_expired');
+
+  } catch (error) {
+    console.error(`Error generating goodbye message for session ${sessionId}:`, error);
+    // Respond with a silent success to not show an error on the frontend
+    res.json({ success: true, audio_base64: '' });
+     await endSession(sessionId, 'goodbye_error');
+  }
+});
+
 
 // ========== Image Sync System ==========
 
@@ -944,7 +1004,7 @@ async function streamTTSToLiveKit(session, topic) {
 async function start() {
   await loadImageLibrary();
 
-  app.listen(PORT, () => {
+  const server = app.listen(PORT, () => {
     console.log(`\n🎯 Orchestrator Service`);
     console.log(`📡 Listening on port ${PORT}`);
     console.log(`🎙️ LiveKit URL: ${LIVEKIT_URL}`);
@@ -953,6 +1013,137 @@ async function start() {
     console.log(`🖼️ ImageScreener: ${IMAGE_SCREENER_URL}`);
     console.log(`\n✅ Ready for conversational AI with synchronized images\n`);
   });
+
+  // ========== WebSocket Server for Operator Panel ==========
+  const wss = new WebSocket.Server({ server });
+
+  // Store clients based on their role
+  const operatorClients = new Set();
+  const kioskClients = new Map(); // Use Map to store kiosks waiting for payment
+
+  function broadcastLog(level, message) {
+    const logEntry = {
+      type: 'log_event',
+      level,
+      message,
+      timestamp: new Date().toISOString(),
+    };
+    const logString = JSON.stringify(logEntry);
+    operatorClients.forEach(client => {
+      if (client.readyState === WebSocket.OPEN) {
+        client.send(logString);
+      }
+    });
+  }
+
+  // Override console.log and console.error to broadcast
+  const originalConsoleLog = console.log;
+  console.log = (...args) => {
+    const message = args.map(arg => typeof arg === 'object' ? JSON.stringify(arg) : String(arg)).join(' ');
+    originalConsoleLog.apply(console, args);
+    broadcastLog('info', message);
+  };
+
+  const originalConsoleError = console.error;
+  console.error = (...args) => {
+    const message = args.map(arg => typeof arg === 'object' ? JSON.stringify(arg) : String(arg)).join(' ');
+    originalConsoleError.apply(console, args);
+    broadcastLog('error', message);
+  };
+
+
+  wss.on('connection', (ws, req) => {
+    const url = new URL(req.url, `http://${req.headers.host}`);
+    const role = url.searchParams.get('role');
+    const kioskId = url.searchParams.get('kioskId');
+
+    if (role === 'operator') {
+      console.log('🔌 Operator client connected');
+      operatorClients.add(ws);
+
+      ws.on('message', (message) => {
+        try {
+          const parsed = JSON.parse(message);
+          if (parsed.type === 'approve_payment' && parsed.kioskId) {
+            console.log(`✅ Payment approved by operator for kiosk: ${parsed.kioskId}`);
+            const waitingKiosk = kioskClients.get(parsed.kioskId);
+            if (waitingKiosk && waitingKiosk.readyState === WebSocket.OPEN) {
+              waitingKiosk.send(JSON.stringify({ type: 'payment_confirmed' }));
+              kioskClients.delete(parsed.kioskId); // Remove from waiting list
+            }
+          } else if (parsed.type === 'terminate_session' && parsed.sessionId) {
+            console.log(`🛑 Operator requested termination of session: ${parsed.sessionId}`);
+            const session = sessions.get(parsed.sessionId);
+            if (session) {
+              broadcastLog('warn', `Operator terminated session: ${parsed.sessionId}`);
+              endSession(parsed.sessionId, 'operator_terminated');
+            } else {
+              broadcastLog('error', `Session ${parsed.sessionId} not found for termination`);
+              console.warn(`⚠️ Session ${parsed.sessionId} not found for termination`);
+            }
+          }
+        } catch (e) {
+          console.error('Failed to parse operator message:', e);
+        }
+      });
+
+      ws.on('close', () => {
+        console.log('🔌 Operator client disconnected');
+        operatorClients.delete(ws);
+      });
+
+    } else if (role === 'kiosk' && kioskId) {
+      console.log(`🔌 Kiosk client connected, waiting for payment: ${kioskId}`);
+      kioskClients.set(kioskId, ws);
+
+      // Notify operators that a kiosk is waiting
+      const waitingMessage = JSON.stringify({ type: 'kiosk_waiting', kioskId });
+      operatorClients.forEach(op => op.send(waitingMessage));
+
+      ws.on('close', () => {
+        console.log(`🔌 Kiosk client disconnected: ${kioskId}`);
+        kioskClients.delete(kioskId);
+        // Notify operators that kiosk is no longer waiting
+        const cancelledMessage = JSON.stringify({ type: 'kiosk_cancelled', kioskId });
+        operatorClients.forEach(op => op.send(cancelledMessage));
+      });
+
+    } else {
+      console.log('🔌 Unidentified client connected, closing connection.');
+      ws.terminate();
+    }
+
+    ws.on('error', (error) => console.error('WebSocket error:', error));
+  });
+  // Central loop to broadcast session timers
+  setInterval(() => {
+    const activeSessions = [];
+    const now = Date.now();
+
+    for (const session of sessions.values()) {
+      if (session.status === 'active') {
+        const elapsedTime = now - session.created_at;
+        const remaining = Math.max(0, session.duration_seconds - Math.floor(elapsedTime / 1000));
+        activeSessions.push({
+          sessionId: session.session_id,
+          kioskId: session.kiosk_id,
+          remaining,
+        });
+      }
+    }
+
+    if (activeSessions.length > 0) {
+      const updateMessage = JSON.stringify({
+        type: 'sessions_update',
+        sessions: activeSessions,
+      });
+      operatorClients.forEach(client => {
+        if (client.readyState === WebSocket.OPEN) {
+          client.send(updateMessage);
+        }
+      });
+    }
+  }, 1000);
 }
 
 start();

@@ -139,7 +139,7 @@
       {
         "id": "theater_of_dionysus",
         "title": "Theater of Dionysus — Athens",
-        "cdn_url": "/images/greek/theater_of_dionysus.svg",
+        "cdn_url": "/images/greek/theater_of_dionysus.jpg",
         "keywords": [
           "theater",
           "dionysus",
@@ -563,7 +563,7 @@
       {
         "id": "alexander_mosaic",
         "title": "Alexander Mosaic (Battle of Issus)",
-        "cdn_url": "/images/greek/alexander_mosaic.svg",
+        "cdn_url": "/images/greek/alexander_mosaic.jpg",
         "keywords": [
           "alexander",
           "mosaic",
@@ -1242,7 +1242,7 @@
       {
         "id": "ancient_greece_map",
         "title": "Map of Ancient Greece",
-        "cdn_url": "/images/greek/ancient_greece_map.svg",
+        "cdn_url": "/images/greek/ancient_greece_map.jpg",
         "keywords": [
           "map",
           "greece",

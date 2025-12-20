@@ -32,7 +32,7 @@ const TTS_PROVIDER = process.env.TTS_PROVIDER || 'deepgram'; // deepgram, eleven
 
 // Deepgram Configuration (primary)
 const DEEPGRAM_API_KEY = process.env.DEEPGRAM_API_KEY;
-const DEEPGRAM_VOICE = process.env.DEEPGRAM_VOICE || 'aura-asteria-en';
+const DEEPGRAM_VOICE = process.env.DEEPGRAM_VOICE || 'aura-2-cordelia-en';
 const USE_DEEPGRAM = DEEPGRAM_API_KEY && DEEPGRAM_API_KEY.length > 0;
 const deepgram = USE_DEEPGRAM ? createClient(DEEPGRAM_API_KEY) : null;
 

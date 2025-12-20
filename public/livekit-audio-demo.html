@@ -1,0 +1,1461 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>LiveKit Audio Demo - Greek Civilization</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: #000;
+      color: #fff;
+      overflow: hidden;
+    }
+
+    #container {
+      position: relative;
+      width: 100vw;
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    #imageDisplay {
+      position: relative;
+      flex: 1;
+      background: #000;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+    }
+
+    #currentImage {
+      max-width: 100%;
+      max-height: 100%;
+      object-fit: contain;
+      opacity: 0;
+      transition: opacity 0.4s ease-in-out;
+    }
+
+    #currentImage.visible {
+      opacity: 1;
+    }
+
+    #caption {
+      position: absolute;
+      bottom: 60px;
+      left: 0;
+      right: 0;
+      background: linear-gradient(to top, rgba(0,0,0,0.8), transparent);
+      padding: 40px 60px 20px;
+      opacity: 0;
+      transition: opacity 0.4s ease-in-out;
+    }
+
+    #caption.visible {
+      opacity: 1;
+    }
+
+    #captionText {
+      font-size: 32px;
+      font-weight: 600;
+      margin-bottom: 8px;
+      text-shadow: 2px 2px 4px rgba(0,0,0,0.8);
+    }
+
+    #captionCredit {
+      font-size: 16px;
+      opacity: 0.7;
+      text-shadow: 1px 1px 2px rgba(0,0,0,0.8);
+    }
+
+    #controlPanel {
+      background: rgba(20, 20, 20, 0.95);
+      padding: 20px 40px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      border-top: 1px solid rgba(255,255,255,0.1);
+    }
+
+    #controls {
+      display: flex;
+      gap: 15px;
+      align-items: center;
+    }
+
+    button {
+      background: #4CAF50;
+      color: white;
+      border: none;
+      padding: 12px 24px;
+      font-size: 16px;
+      border-radius: 6px;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      font-weight: 600;
+    }
+
+    button:hover {
+      background: #45a049;
+      transform: translateY(-2px);
+      box-shadow: 0 4px 8px rgba(76, 175, 80, 0.3);
+    }
+
+    button:disabled {
+      background: #555;
+      cursor: not-allowed;
+      transform: none;
+      box-shadow: none;
+    }
+
+    button.danger {
+      background: #f44336;
+    }
+
+    button.danger:hover {
+      background: #da190b;
+    }
+
+    #status {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      flex: 1;
+      max-width: 600px;
+      margin-left: 20px;
+    }
+
+    #statusText {
+      font-size: 14px;
+      color: #aaa;
+    }
+
+    #statusText.connected {
+      color: #4CAF50;
+    }
+
+    #statusText.error {
+      color: #f44336;
+    }
+
+    #progressBar {
+      width: 100%;
+      height: 4px;
+      background: rgba(255,255,255,0.1);
+      border-radius: 2px;
+      overflow: hidden;
+    }
+
+    #progressFill {
+      height: 100%;
+      background: #4CAF50;
+      width: 0%;
+      transition: width 0.3s ease;
+    }
+
+    #stats {
+      position: fixed;
+      top: 20px;
+      left: 20px;
+      background: rgba(20, 20, 20, 0.9);
+      padding: 15px;
+      border-radius: 8px;
+      font-size: 14px;
+      min-width: 300px;
+      border: 1px solid rgba(255,255,255,0.1);
+    }
+
+    #stats h3 {
+      margin-bottom: 10px;
+      font-size: 16px;
+      color: #4CAF50;
+    }
+
+    #stats .stat-row {
+      display: flex;
+      justify-content: space-between;
+      padding: 4px 0;
+      border-bottom: 1px solid rgba(255,255,255,0.05);
+    }
+
+    #stats .stat-label {
+      color: #aaa;
+    }
+
+    #stats .stat-value {
+      color: #fff;
+      font-weight: 600;
+    }
+
+    .livekit-badge {
+      display: inline-block;
+      padding: 4px 12px;
+      background: rgba(76, 175, 80, 0.2);
+      border: 1px solid rgba(76, 175, 80, 0.4);
+      border-radius: 4px;
+      font-size: 12px;
+      font-weight: 600;
+      color: #4CAF50;
+    }
+
+    #logsPanel {
+      position: fixed;
+      top: 20px;
+      right: 20px;
+      width: 400px;
+      max-height: 80vh;
+      background: rgba(20, 20, 20, 0.95);
+      border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 8px;
+      padding: 15px;
+      font-family: 'Courier New', monospace;
+      font-size: 12px;
+      overflow-y: auto;
+      display: none;
+    }
+
+    #logsPanel.visible {
+      display: block;
+    }
+
+    .log-entry {
+      padding: 4px 0;
+      border-bottom: 1px solid rgba(255,255,255,0.05);
+    }
+
+    .log-timestamp {
+      color: #888;
+      margin-right: 8px;
+    }
+
+    .log-info { color: #4CAF50; }
+    .log-warn { color: #ff9800; }
+    .log-error { color: #f44336; }
+
+    /* STT Styles */
+    #micBtn {
+      background: #2196F3;
+      position: relative;
+    }
+
+    #micBtn:hover {
+      background: #1976D2;
+    }
+
+    #micBtn.listening {
+      background: #f44336;
+      animation: pulse 1.5s infinite;
+    }
+
+    @keyframes pulse {
+      0%, 100% { box-shadow: 0 0 0 0 rgba(244, 67, 54, 0.7); }
+      50% { box-shadow: 0 0 0 10px rgba(244, 67, 54, 0); }
+    }
+
+    #transcriptPanel {
+      position: fixed;
+      bottom: 100px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: rgba(20, 20, 20, 0.95);
+      border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 8px;
+      padding: 20px;
+      min-width: 600px;
+      max-width: 800px;
+      display: none;
+    }
+
+    #transcriptPanel.visible {
+      display: block;
+    }
+
+    #transcriptPanel h3 {
+      margin-bottom: 10px;
+      font-size: 16px;
+      color: #2196F3;
+    }
+
+    #transcriptText {
+      font-size: 18px;
+      line-height: 1.6;
+      min-height: 60px;
+      color: #fff;
+      padding: 10px;
+      background: rgba(255,255,255,0.05);
+      border-radius: 4px;
+    }
+
+    #transcriptInterim {
+      color: #888;
+      font-style: italic;
+    }
+
+    .stt-status {
+      display: inline-block;
+      padding: 2px 8px;
+      border-radius: 3px;
+      font-size: 11px;
+      font-weight: 600;
+      margin-left: 8px;
+    }
+
+    .stt-status.listening {
+      background: rgba(244, 67, 54, 0.2);
+      color: #f44336;
+    }
+
+    .stt-status.idle {
+      background: rgba(128, 128, 128, 0.2);
+      color: #888;
+    }
+
+    /* Gesture Control Styles */
+    #gesturePreview {
+      position: fixed;
+      bottom: 120px;
+      right: 20px;
+      width: 240px;
+      height: 180px;
+      background: rgba(20, 20, 20, 0.95);
+      border: 2px solid rgba(76, 175, 80, 0.4);
+      border-radius: 8px;
+      overflow: hidden;
+      display: none;
+    }
+
+    #gesturePreview.active {
+      display: block;
+    }
+
+    #gestureCamera {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      transform: scaleX(-1); /* Mirror camera */
+    }
+
+    #gestureCanvas {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+    }
+
+    #gestureControls {
+      position: fixed;
+      bottom: 310px;
+      right: 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    #gestureControls button {
+      padding: 8px 16px;
+      font-size: 14px;
+      min-width: 240px;
+    }
+
+    .gesture-indicator {
+      position: absolute;
+      bottom: 10px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: rgba(76, 175, 80, 0.9);
+      padding: 6px 12px;
+      border-radius: 6px;
+      font-size: 14px;
+      font-weight: 600;
+      display: none;
+      animation: fadeInOut 2s ease-in-out;
+    }
+
+    .gesture-indicator.visible {
+      display: block;
+    }
+
+    @keyframes fadeInOut {
+      0%, 100% { opacity: 0; }
+      10%, 90% { opacity: 1; }
+    }
+  </style>
+</head>
+<body>
+  <div id="container">
+    <div id="imageDisplay">
+      <img id="currentImage" alt="Greek Civilization" class="visible" src="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' width='1920' height='1080'><rect fill='%23000' width='1920' height='1080'/><text x='50%' y='45%' fill='white' font-size='72' text-anchor='middle' font-family='Arial'>🏛️ Greek Civilization</text><text x='50%' y='55%' fill='%23888' font-size='32' text-anchor='middle' font-family='Arial'>Click Start to begin your journey</text></svg>">
+      <div id="caption">
+        <div id="captionText"></div>
+        <div id="captionCredit"></div>
+      </div>
+    </div>
+
+    <div id="controlPanel">
+      <div id="controls">
+        <button id="startBtn">🎬 Start LiveKit Experience</button>
+        <button id="stopBtn" disabled class="danger">⏹️ Stop</button>
+        <button id="micBtn">🎤 Start Listening</button>
+        <button id="toggleLogsBtn">📋 Logs</button>
+      </div>
+      <div id="status">
+        <div id="statusText">Ready - Will use LiveKit for audio</div>
+        <div id="progressBar">
+          <div id="progressFill"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div id="stats">
+    <h3>📊 LiveKit Demo Status</h3>
+    <div class="stat-row">
+      <span class="stat-label">Connection:</span>
+      <span class="stat-value" id="connectionStatus">Disconnected</span>
+    </div>
+    <div class="stat-row">
+      <span class="stat-label">Room:</span>
+      <span class="stat-value" id="roomName">-</span>
+    </div>
+    <div class="stat-row">
+      <span class="stat-label">Audio Track:</span>
+      <span class="stat-value" id="audioTrackStatus">None</span>
+    </div>
+    <div class="stat-row">
+      <span class="stat-label">Participants:</span>
+      <span class="stat-value" id="participantCount">0</span>
+    </div>
+    <div class="stat-row">
+      <span class="stat-label">Images:</span>
+      <span class="stat-value" id="imagesValue">0/2</span>
+    </div>
+    <div class="stat-row">
+      <span class="stat-label">STT:</span>
+      <span class="stat-value" id="sttStatus">
+        <span class="stt-status idle">Idle</span>
+      </span>
+    </div>
+    <div style="margin-top: 10px; padding-top: 10px; border-top: 1px solid rgba(255,255,255,0.1);">
+      <span class="livekit-badge">✓ LiveKit WebRTC</span>
+    </div>
+  </div>
+
+  <div id="transcriptPanel">
+    <h3>🎤 Live Transcription</h3>
+    <div id="transcriptText">
+      <span id="transcriptFinal">Say something...</span>
+      <span id="transcriptInterim"></span>
+    </div>
+  </div>
+
+  <div id="logsPanel">
+    <h3>Event Log</h3>
+    <div id="logEntries"></div>
+  </div>
+
+  <!-- Gesture Control Preview -->
+  <div id="gesturePreview">
+    <video id="gestureCamera" autoplay playsinline></video>
+    <canvas id="gestureCanvas"></canvas>
+    <div id="gestureIndicator" class="gesture-indicator"></div>
+  </div>
+
+  <!-- Gesture Control Buttons (hidden) -->
+  <div id="gestureControls" style="display: none;">
+    <button id="toggleGestureBtn">🤚 Enable Gestures</button>
+  </div>
+
+  <!-- TensorFlow.js and Handpose (from CDN) -->
+  <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs-core"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs-converter"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs-backend-webgl"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/handpose"></script>
+
+  <!-- Handpose Tracker Integration -->
+  <script src="/js/gesture-handpose.js"></script>
+
+  <!-- Gesture Recognition Module -->
+  <script src="/js/gesture-recognition.js"></script>
+
+  <script src="/js/livekit-client.umd.js"></script>
+
+  <script>
+    const ORCHESTRATOR_URL = 'http://localhost:3000';
+    const KIOSK_ID = 'livekit-demo-001';
+
+    // No initial monologue - starts with conversation only
+
+    let state = {
+      room: null,
+      sessionId: null,
+      isNarrating: false,
+      wordCount: 0,
+      imagesShown: 0,
+      recognition: null,
+      isListening: false,
+      isStarting: false,
+      transcript: '',
+      gestureEnabled: false,
+      gestureRecognizer: null
+    };
+
+    const startBtn = document.getElementById('startBtn');
+    const stopBtn = document.getElementById('stopBtn');
+    const micBtn = document.getElementById('micBtn');
+    const toggleLogsBtn = document.getElementById('toggleLogsBtn');
+    const toggleGestureBtn = document.getElementById('toggleGestureBtn');
+    const statusText = document.getElementById('statusText');
+    const progressFill = document.getElementById('progressFill');
+    const currentImage = document.getElementById('currentImage');
+    const caption = document.getElementById('caption');
+    const captionText = document.getElementById('captionText');
+    const captionCredit = document.getElementById('captionCredit');
+    const logsPanel = document.getElementById('logsPanel');
+    const logEntries = document.getElementById('logEntries');
+    const transcriptPanel = document.getElementById('transcriptPanel');
+    const transcriptFinal = document.getElementById('transcriptFinal');
+    const transcriptInterim = document.getElementById('transcriptInterim');
+    const sttStatus = document.getElementById('sttStatus');
+    const gesturePreview = document.getElementById('gesturePreview');
+    const gestureIndicator = document.getElementById('gestureIndicator');
+
+    function log(message, type = 'info') {
+      const timestamp = new Date().toLocaleTimeString();
+      const entry = document.createElement('div');
+      entry.className = `log-entry log-${type}`;
+      entry.innerHTML = `<span class="log-timestamp">${timestamp}</span>${message}`;
+      logEntries.appendChild(entry);
+      logEntries.scrollTop = logEntries.scrollHeight;
+      console.log(`[${type.toUpperCase()}] ${message}`);
+    }
+
+    function updateStatus(text, className = '') {
+      statusText.textContent = text;
+      statusText.className = className;
+    }
+
+    function updateStats() {
+      document.getElementById('imagesValue').textContent = `${state.imagesShown}/2`;
+      if (state.room) {
+        document.getElementById('connectionStatus').textContent =
+          state.room.state === 'connected' ? 'Connected ✓' : 'Connecting...';
+        document.getElementById('roomName').textContent =
+          state.room.name || '-';
+        const participantCount = state.room.participants ? state.room.participants.size + 1 : 1;
+        document.getElementById('participantCount').textContent = participantCount;
+        document.getElementById('audioTrackStatus').textContent =
+          state.audioTrack ? 'Publishing ✓' : 'None';
+      }
+    }
+
+    // Image display is now handled by ImageSyncSystem via DataChannel messages
+
+    async function connectToLiveKit() {
+      try {
+        updateStatus('Creating LiveKit session...');
+        progressFill.style.width = '20%';
+
+        // Create session with orchestrator
+        const response = await fetch(`${ORCHESTRATOR_URL}/start_session`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ kiosk_id: KIOSK_ID })
+        });
+
+        if (!response.ok) throw new Error('Failed to create session');
+
+        const { session_id, token, livekit_url, room_name } = await response.json();
+        state.sessionId = session_id;
+
+        log(`✅ Session created: ${session_id}`);
+        log(`🔗 LiveKit URL: ${livekit_url}`);
+        log(`🏠 Room: ${room_name}`);
+        progressFill.style.width = '40%';
+
+        // Connect to LiveKit room
+        updateStatus('Connecting to LiveKit room...');
+        const room = new LivekitClient.Room({
+          adaptiveStream: true,
+          dynacast: true,
+        });
+        state.room = room;
+
+        // Room event handlers
+        room.on(LivekitClient.RoomEvent.Connected, () => {
+          log('✅ Connected to LiveKit room');
+          updateStatus('Connected to LiveKit ✓', 'connected');
+          updateStats();
+        });
+
+        room.on(LivekitClient.RoomEvent.ParticipantConnected, (participant) => {
+          log(`👤 Participant joined: ${participant.identity}`);
+          updateStats();
+        });
+
+        room.on(LivekitClient.RoomEvent.TrackPublished, (publication, participant) => {
+          log(`📢 Track published: ${publication.kind} by ${participant.identity}`);
+        });
+
+        room.on(LivekitClient.RoomEvent.TrackSubscribed, (track, publication, participant) => {
+          log(`📥 Subscribed to ${track.kind} from ${participant.identity}`);
+          if (track.kind === 'audio') {
+            const audioEl = track.attach();
+            audioEl.autoplay = true;
+            audioEl.playsInline = true;
+            audioEl.play().catch(e => {
+              log(`❌ Failed to play audio track from ${participant.identity}: ${e.message}`, 'error');
+              log('Please ensure autoplay is allowed in your browser settings or interact with the page first.', 'warn');
+            });
+            log(`🔊 Playing audio from ${participant.identity}`, 'info');
+          }
+        });
+
+        room.on(LivekitClient.RoomEvent.AudioPlaybackStatusChanged, () => {
+          log('🔊 Audio playback status changed');
+          imageSync.initAudioClock();
+        });
+
+        // Handle DataChannel messages for image sync
+        room.on(LivekitClient.RoomEvent.DataReceived, async (payload, participant) => {
+          try {
+            const decoder = new TextDecoder();
+            const messageStr = decoder.decode(payload);
+            const message = JSON.parse(messageStr);
+
+            log(`📬 DataChannel: ${message.type}`, 'info');
+
+            switch (message.type) {
+              case 'img_preload':
+                await imageSync.handlePreload(message);
+                break;
+
+              case 'img_show':
+                imageSync.handleShow(message);
+                break;
+
+              case 'end_of_stream':
+                log('🏁 End of stream received', 'info');
+                break;
+
+              default:
+                log(`Unknown message type: ${message.type}`, 'warn');
+            }
+          } catch (error) {
+            log(`❌ DataChannel error: ${error.message}`, 'error');
+          }
+        });
+
+        // Connect
+        await room.connect(livekit_url, token);
+        progressFill.style.width = '60%';
+
+        log('✅ LiveKit connection established');
+        return room;
+
+      } catch (error) {
+        log(`❌ LiveKit error: ${error.message}`, 'error');
+        updateStatus('LiveKit connection failed', 'error');
+        throw error;
+      }
+    }
+
+    async function publishAudioToLiveKit() {
+      // Audio publishing disabled - using conversation-based TTS instead
+      log('ℹ️ Skipping initial audio track (conversation mode)');
+      progressFill.style.width = '80%';
+    }
+
+    async function startExperience() {
+      try {
+        startBtn.disabled = true;
+        log('🎬 Starting LiveKit Experience');
+        log('━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+
+        // Connect to LiveKit
+        await connectToLiveKit();
+
+        // Publish audio
+        await publishAudioToLiveKit();
+
+        // Auto-start STT (mic always on during session)
+        log('🎤 Auto-starting STT (mic always on)');
+        if (!state.isListening) {
+          toggleSTT();
+        }
+
+        stopBtn.disabled = false;
+
+      } catch (error) {
+        log(`❌ Failed to start: ${error.message}`, 'error');
+        startBtn.disabled = false;
+        progressFill.style.width = '0%';
+      }
+    }
+
+    // ========== Speech-to-Text (STT) Functions ==========
+
+    function initializeSTT() {
+      // Check if Web Speech API is supported
+      const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+
+      if (!SpeechRecognition) {
+        log('❌ Speech recognition not supported in this browser', 'error');
+        micBtn.disabled = true;
+        micBtn.textContent = '🎤 STT Not Supported';
+        return null;
+      }
+
+      const recognition = new SpeechRecognition();
+      recognition.continuous = true;
+      recognition.interimResults = true;
+      recognition.lang = 'en-US';
+      recognition.maxAlternatives = 1;
+
+      recognition.onstart = () => {
+        state.isListening = true;
+        state.isStarting = false;
+        micBtn.classList.add('listening');
+        micBtn.textContent = '🔴 Stop Listening';
+        transcriptPanel.classList.add('visible');
+        sttStatus.innerHTML = '<span class="stt-status listening">● Listening</span>';
+        log('🎤 STT started - Listening...', 'info');
+      };
+
+      recognition.onresult = (event) => {
+        let interimTranscript = '';
+        let finalTranscript = '';
+
+        for (let i = event.resultIndex; i < event.results.length; i++) {
+          const transcript = event.results[i][0].transcript;
+          if (event.results[i].isFinal) {
+            finalTranscript += transcript + ' ';
+          } else {
+            interimTranscript += transcript;
+          }
+        }
+
+        if (finalTranscript) {
+          const trimmedFinal = finalTranscript.trim();
+          state.transcript += finalTranscript;
+          transcriptFinal.textContent = state.transcript;
+          log(`📝 Transcribed: "${trimmedFinal}"`, 'info');
+
+          // Send to LLM for conversation
+          if (state.sessionId && trimmedFinal.length > 0) {
+            sendToLLM(trimmedFinal);
+          }
+        }
+
+        transcriptInterim.textContent = interimTranscript;
+      };
+
+      recognition.onerror = (event) => {
+        state.isStarting = false;
+        log(`❌ STT error: ${event.error}`, 'error');
+        if (event.error === 'no-speech') {
+          log('💭 No speech detected, still listening...', 'warn');
+        } else if (event.error === 'aborted') {
+          log('⚠️ STT aborted, will retry...', 'warn');
+        } else if (event.error === 'not-allowed') {
+          log('❌ Microphone permission denied!', 'error');
+          state.isListening = false;
+        }
+      };
+
+      recognition.onend = () => {
+        state.isStarting = false;
+        if (state.isListening) {
+          // Auto-restart with delay to prevent infinite loop
+          setTimeout(() => {
+            if (state.isListening && !state.isStarting) {
+              state.isStarting = true;
+              try {
+                recognition.start();
+              } catch (error) {
+                state.isStarting = false;
+                log(`❌ Failed to restart STT: ${error.message}`, 'error');
+              }
+            }
+          }, 1000);
+        } else {
+          micBtn.classList.remove('listening');
+          micBtn.textContent = '🎤 Start Listening';
+          sttStatus.innerHTML = '<span class="stt-status idle">Idle</span>';
+          log('🎤 STT stopped', 'info');
+        }
+      };
+
+      return recognition;
+    }
+
+    function toggleSTT() {
+      if (!state.recognition) {
+        state.recognition = initializeSTT();
+        if (!state.recognition) return;
+      }
+
+      if (state.isListening) {
+        // Stop listening
+        state.isListening = false;
+        state.isStarting = false;
+        state.recognition.stop();
+        transcriptPanel.classList.remove('visible');
+      } else {
+        // Start listening
+        if (state.isStarting) {
+          log('⚠️ STT is already starting, please wait...', 'warn');
+          return;
+        }
+        state.isStarting = true;
+        try {
+          state.recognition.start();
+        } catch (error) {
+          state.isStarting = false;
+          log(`❌ Failed to start STT: ${error.message}`, 'error');
+        }
+      }
+    }
+
+    function clearTranscript() {
+      state.transcript = '';
+      transcriptFinal.textContent = 'Say something...';
+      transcriptInterim.textContent = '';
+    }
+
+    async function sendToLLM(userMessage) {
+      try {
+        log(`💬 Sending to LLM: "${userMessage}"`, 'info');
+
+        const response = await fetch(`${ORCHESTRATOR_URL}/converse`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            session_id: state.sessionId,
+            message: userMessage
+          })
+        });
+
+        if (!response.ok) {
+          throw new Error(`Conversation failed: ${response.statusText}`);
+        }
+
+        const data = await response.json();
+        const assistantResponse = data.assistant_response;
+        log(`🤖 Assistant: "${assistantResponse}"`, 'info');
+
+        // Play TTS audio from base64 response
+        if (data.audio_base64) {
+          log(`🔊 Playing TTS audio (${(data.audio_base64.length / 1024).toFixed(1)}KB)`, 'info');
+
+          // Try HTML5 Audio element first (more reliable with autoplay)
+          try {
+            await playAudioWithHTML5(data.audio_base64);
+          } catch (error) {
+            log(`⚠️ HTML5 Audio failed, trying Web Audio API: ${error.message}`, 'warn');
+            await playAudioBase64(data.audio_base64);
+          }
+        } else if (data.tts_error) {
+          log(`⚠️ TTS error: ${data.tts_error}`, 'warn');
+        }
+
+      } catch (error) {
+        log(`❌ LLM error: ${error.message}`, 'error');
+      }
+    }
+
+    async function playAudioWithHTML5(base64Audio) {
+      return new Promise((resolve, reject) => {
+        try {
+          log('🔊 Using HTML5 Audio element', 'info');
+
+          const audio = new Audio();
+          audio.src = `data:audio/mp3;base64,${base64Audio}`;
+          audio.volume = 1.0;
+
+          audio.onloadedmetadata = () => {
+            log(`🔊 Audio loaded: ${audio.duration.toFixed(2)}s`, 'info');
+          };
+
+          audio.onplay = () => {
+            log('▶️ HTML5 Audio playing', 'info');
+          };
+
+          audio.onended = () => {
+            log('✅ HTML5 Audio finished', 'info');
+            resolve();
+          };
+
+          audio.onerror = (e) => {
+            log(`❌ HTML5 Audio error: ${audio.error?.message || 'unknown'}`, 'error');
+            reject(new Error(audio.error?.message || 'Audio playback failed'));
+          };
+
+          // Play the audio
+          audio.play().catch(err => {
+            log(`❌ HTML5 play() rejected: ${err.message}`, 'error');
+            reject(err);
+          });
+
+        } catch (error) {
+          log(`❌ HTML5 setup error: ${error.message}`, 'error');
+          reject(error);
+        }
+      });
+    }
+
+    async function playAudioBase64(base64Audio) {
+      try {
+        log(`🎵 Decoding audio (${(base64Audio.length / 1024).toFixed(1)}KB base64)`, 'info');
+
+        // Create AudioContext if it doesn't exist
+        if (!audioContext) {
+          audioContext = new (window.AudioContext || window.webkitAudioContext)();
+          log(`🔊 Created new AudioContext (state: ${audioContext.state})`, 'info');
+        }
+
+        log(`🔊 AudioContext state BEFORE: ${audioContext.state}`, 'info');
+
+        // Resume AudioContext if suspended (required by browser autoplay policies)
+        if (audioContext.state === 'suspended') {
+          log('🔊 AudioContext is suspended, resuming...', 'info');
+          await audioContext.resume();
+        }
+
+        log(`🔊 AudioContext state AFTER: ${audioContext.state}`, 'info');
+
+        // Check if audio will actually play
+        if (audioContext.state !== 'running') {
+          log(`❌ WARNING: AudioContext is NOT running (state: ${audioContext.state})`, 'error');
+        }
+
+        // Decode base64 to binary
+        const binaryString = atob(base64Audio);
+        log(`🎵 Decoded to binary (${(binaryString.length / 1024).toFixed(1)}KB)`, 'info');
+
+        // Convert to ArrayBuffer
+        const arrayBuffer = new ArrayBuffer(binaryString.length);
+        const uint8Array = new Uint8Array(arrayBuffer);
+        for (let i = 0; i < binaryString.length; i++) {
+          uint8Array[i] = binaryString.charCodeAt(i);
+        }
+
+        log('🎵 Decoding MP3...', 'info');
+        const audioBuffer = await audioContext.decodeAudioData(arrayBuffer);
+        log(`✅ Audio decoded: ${audioBuffer.duration.toFixed(2)}s`, 'info');
+
+        const source = audioContext.createBufferSource();
+        source.buffer = audioBuffer;
+        source.connect(audioContext.destination);
+
+        source.onended = () => {
+          log('✅ TTS audio finished playing', 'info');
+        };
+
+        source.start(0);
+        log('▶️ TTS audio started playing', 'info');
+
+      } catch (error) {
+        log(`❌ Audio playback error: ${error.message}`, 'error');
+        console.error('Full audio error:', error);
+      }
+    }
+
+
+
+    // ========== Gesture Control Functions ==========
+
+    function showGestureIndicator(gestureName) {
+      gestureIndicator.textContent = `👋 ${gestureName}`;
+      gestureIndicator.classList.add('visible');
+      setTimeout(() => {
+        gestureIndicator.classList.remove('visible');
+      }, 2000);
+    }
+
+    async function initializeGestureControl() {
+      try {
+        log('🤚 Initializing gesture control...', 'info');
+
+        // Create gesture recognizer
+        state.gestureRecognizer = new GestureRecognizer();
+
+        // Initialize with camera and canvas
+        await state.gestureRecognizer.initialize('gestureCamera', 'gestureCanvas');
+
+        // Register gesture handlers
+        state.gestureRecognizer.on('thumbs_up', () => {
+          log('👍 Gesture: Thumbs Up → Next Image', 'info');
+          showGestureIndicator('Thumbs Up - Next Image');
+          // Trigger next image if images are queued
+          const images = Array.from(imageSync.imageQueue.values());
+          if (images.length > 0) {
+            const nextImage = images.find(img => img.id !== imageSync.currentImageId);
+            if (nextImage) {
+              imageSync.showImageNow(nextImage);
+            }
+          }
+        });
+
+        state.gestureRecognizer.on('point', () => {
+          log('👆 Gesture: Point → Select', 'info');
+          showGestureIndicator('Point - Select');
+          // Flash current image as feedback
+          const activeBuffer = imageSync.activeBuffer === 'A' ? imageSync.imageA : imageSync.imageB;
+          activeBuffer.style.transform = 'scale(1.05)';
+          setTimeout(() => {
+            activeBuffer.style.transform = 'scale(1)';
+          }, 200);
+        });
+
+        state.gestureRecognizer.on('open_palm', () => {
+          log('✋ Gesture: Open Palm → Pause', 'info');
+          showGestureIndicator('Open Palm - Pause');
+          // Pause TTS narration
+          if (window.speechSynthesis.speaking) {
+            window.speechSynthesis.pause();
+            setTimeout(() => {
+              window.speechSynthesis.resume();
+            }, 2000);
+          }
+        });
+
+        state.gestureRecognizer.on('peace', () => {
+          log('✌️ Gesture: Peace → Volume Up', 'info');
+          showGestureIndicator('Peace - Volume Up');
+          // Increase volume (if using audio element)
+          log('💡 Volume control not yet implemented', 'warn');
+        });
+
+        state.gestureRecognizer.on('fist', () => {
+          log('✊ Gesture: Fist → Close', 'info');
+          showGestureIndicator('Fist - Close Session');
+          // Stop the experience
+          setTimeout(() => {
+            if (state.sessionId) {
+              stopExperience();
+            }
+          }, 1000);
+        });
+
+        // Start gesture detection
+        state.gestureRecognizer.start();
+        state.gestureEnabled = true;
+
+        log('✅ Gesture control started', 'info');
+
+      } catch (error) {
+        log(`❌ Gesture control error: ${error.message}`, 'error');
+        throw error;
+      }
+    }
+
+    async function toggleGestureControl() {
+      if (state.gestureEnabled) {
+        // Disable gestures
+        if (state.gestureRecognizer) {
+          state.gestureRecognizer.stop();
+          state.gestureRecognizer = null;
+        }
+        state.gestureEnabled = false;
+        gesturePreview.classList.remove('active');
+        toggleGestureBtn.textContent = '🤚 Enable Gestures';
+        log('⏹️ Gesture control disabled', 'info');
+      } else {
+        // Enable gestures
+        try {
+          await initializeGestureControl();
+          gesturePreview.classList.add('active');
+          toggleGestureBtn.textContent = '⏹️ Disable Gestures';
+        } catch (error) {
+          log(`❌ Failed to enable gestures: ${error.message}`, 'error');
+        }
+      }
+    }
+
+    async function stopExperience() {
+      try {
+        stopBtn.disabled = true;
+        log('⏹️ Stopping experience');
+
+        // Stop STT if running
+        if (state.isListening) {
+          state.isListening = false;
+          if (state.recognition) {
+            state.recognition.stop();
+          }
+          transcriptPanel.classList.remove('visible');
+        }
+
+        // Stop gesture control if running
+        if (state.gestureEnabled && state.gestureRecognizer) {
+          state.gestureRecognizer.stop();
+          state.gestureRecognizer = null;
+          state.gestureEnabled = false;
+          gesturePreview.classList.remove('active');
+          toggleGestureBtn.textContent = '🤚 Enable Gestures';
+          log('⏹️ Gesture control stopped', 'info');
+        }
+
+        // Stop TTS (now handled by LiveKit audio track)
+        // No explicit cancellation needed as it's a remote stream that will end with session
+
+        // Unpublish tracks (initial audio track publishing is skipped)
+
+        // Disconnect from LiveKit
+        if (state.room) {
+          state.room.disconnect();
+          state.room = null;
+        }
+
+        // End session
+        if (state.sessionId) {
+          await fetch(`${ORCHESTRATOR_URL}/session/${state.sessionId}`, {
+            method: 'DELETE'
+          });
+        }
+
+        // Reset image sync system
+        imageSync.reset();
+
+        // Reset state
+        state = {
+          room: null,
+          sessionId: null,
+          isNarrating: false,
+          wordCount: 0,
+          imagesShown: 0,
+          audioTrack: null,
+          ttsUtterance: null
+        };
+
+        updateStats();
+        updateStatus('Session ended');
+        progressFill.style.width = '0%';
+        startBtn.disabled = false;
+
+        currentImage.classList.remove('visible');
+        caption.classList.remove('visible');
+
+        log('✅ Experience stopped');
+
+      } catch (error) {
+        log(`❌ Stop error: ${error.message}`, 'error');
+      }
+    }
+
+    // ========== Image Sync System with Audio Clock Mapping ==========
+
+    class ImageSyncSystem {
+      constructor() {
+        this.imageQueue = new Map(); // id -> { image_data, playout_ts, preloaded }
+        this.currentImageId = null;
+        this.nextImageId = null;
+        this.audioClockOffset = null; // Maps performance.now() to audio timeline
+        this.timeOffset = null; // Offset between server playout_ts and client performance.now()
+        this.syncInitialized = false;
+        this.scheduledTransitions = [];
+
+        // Create two image buffers for crossfade
+        this.imageA = document.getElementById('currentImage');
+        this.imageB = this.createSecondBuffer();
+        this.activeBuffer = 'A';
+      }
+
+      createSecondBuffer() {
+        const imgB = document.createElement('img');
+        imgB.id = 'nextImage';
+        imgB.style.cssText = `
+          position: absolute;
+          top: 0;
+          left: 0;
+          width: 100%;
+          height: 100%;
+          object-fit: contain;
+          opacity: 0;
+          transition: opacity 400ms ease-in-out;
+        `;
+        document.getElementById('imageDisplay').appendChild(imgB);
+        return imgB;
+      }
+
+      // Initialize audio clock when first audio packet received
+      initAudioClock() {
+        if (!this.audioClockOffset) {
+          this.audioClockOffset = performance.now();
+          log('🕐 Audio clock initialized', 'info');
+        }
+      }
+
+      // Initialize time synchronization when first control message arrives
+      initializeSync(serverPlayoutTs) {
+        if (this.syncInitialized) return;
+
+        const clientNow = performance.now();
+        this.timeOffset = serverPlayoutTs - clientNow;
+        this.syncInitialized = true;
+
+        log(`🔄 Time sync initialized: offset=${this.timeOffset}ms`, 'info');
+        log(`  Server playout_ts: ${serverPlayoutTs}`, 'info');
+        log(`  Client now: ${clientNow}`, 'info');
+      }
+
+      // Convert server playout_ts to client performance.now() time
+      convertToLocalTime(serverPlayoutTs) {
+        if (!this.syncInitialized) {
+          log('⚠️ Time sync not initialized, initializing with current playout_ts', 'warn');
+          this.initializeSync(serverPlayoutTs);
+          return performance.now();
+        }
+        return serverPlayoutTs - this.timeOffset;
+      }
+
+      // Map playout_ts to local time (legacy method - kept for compatibility)
+      getLocalTime(playout_ts) {
+        return this.convertToLocalTime(playout_ts);
+      }
+
+      // Handle img_preload message from DataChannel
+      async handlePreload(message) {
+        const { id, cdn_url, playout_ts, ttl_ms, title, category } = message;
+
+        // Initialize sync on first message with playout_ts
+        if (!this.syncInitialized && playout_ts) {
+          this.initializeSync(playout_ts);
+        }
+
+        const localTime = this.convertToLocalTime(playout_ts);
+        const delay = localTime - performance.now();
+        log(`🖼️ Preload: ${id} (playout in ${delay.toFixed(0)}ms)`, 'info');
+
+        const img = new Image();
+        img.crossOrigin = 'anonymous';
+
+        return new Promise((resolve) => {
+          img.onload = () => {
+            this.imageQueue.set(id, {
+              id,
+              cdn_url,
+              playout_ts,
+              ttl_ms,
+              image: img,
+              preloaded: true,
+              caption: message.caption || title || '',
+              credit: message.credit || 'Wikimedia Commons'
+            });
+
+            log(`✅ Image preloaded: ${id}`, 'info');
+            resolve(true);
+          };
+
+          img.onerror = () => {
+            log(`❌ Failed to load image from: ${cdn_url}`, 'error');
+            // Fallback to placeholder on error
+            const placeholderSvg = this.generatePlaceholderSVG(title || id, category || 'Greek Civilization');
+            img.src = placeholderSvg;
+            resolve(false);
+          };
+
+          // Load actual image from URL (local or CDN)
+          img.src = cdn_url;
+        });
+      }
+
+      // Generate placeholder SVG for demo
+      generatePlaceholderSVG(title, category) {
+        // Color palette for different categories
+        const categoryColors = {
+          'architecture': '#4A5568',
+          'gods': '#805AD5',
+          'daily_life': '#DD6B20',
+          'pottery': '#C05621',
+          'sculpture': '#718096',
+          'philosophy': '#2D3748',
+          'warfare': '#742A2A',
+          'ships': '#2C5282',
+          'default': '#4A5568'
+        };
+
+        // Extract category from string (e.g., "architecture_temples" -> "architecture")
+        const mainCategory = Object.keys(categoryColors).find(cat =>
+          category.toLowerCase().includes(cat)
+        ) || 'default';
+
+        const color = categoryColors[mainCategory];
+
+        // Format title for display
+        const displayTitle = title.replace(/_/g, ' ')
+          .split(' ')
+          .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+          .join(' ');
+
+        // Generate SVG
+        const svg = `
+          <svg xmlns="http://www.w3.org/2000/svg" width="1200" height="800" viewBox="0 0 1200 800">
+            <defs>
+              <linearGradient id="grad" x1="0%" y1="0%" x2="100%" y2="100%">
+                <stop offset="0%" style="stop-color:${color};stop-opacity:1" />
+                <stop offset="100%" style="stop-color:#1A202C;stop-opacity:1" />
+              </linearGradient>
+            </defs>
+            <rect fill="url(#grad)" width="1200" height="800"/>
+            <text x="50%" y="40%" fill="white" font-size="48" text-anchor="middle" font-family="Georgia, serif" font-weight="bold" opacity="0.9">
+              ${displayTitle}
+            </text>
+            <text x="50%" y="50%" fill="white" font-size="28" text-anchor="middle" font-family="Arial, sans-serif" opacity="0.6">
+              ${category.replace(/_/g, ' ').toUpperCase()}
+            </text>
+            <text x="50%" y="65%" fill="white" font-size="72" text-anchor="middle" opacity="0.3">
+              🏛️
+            </text>
+          </svg>
+        `;
+
+        return 'data:image/svg+xml;base64,' + btoa(unescape(encodeURIComponent(svg)));
+      }
+
+      // Handle img_show message from DataChannel
+      handleShow(message) {
+        const { id, transition, duration_ms } = message;
+
+        const imageData = this.imageQueue.get(id);
+        if (!imageData) {
+          log(`❌ Image not preloaded: ${id}`, 'error');
+          return;
+        }
+
+        // Use the playout_ts from the PRELOADED data (not from this message which arrives late)
+        const playout_ts = imageData.playout_ts;
+
+        if (!playout_ts) {
+          log(`⚠️ No playout_ts found for ${id}, showing immediately`, 'warn');
+          this.showImageNow(imageData, transition, duration_ms);
+          return;
+        }
+
+        // Convert server playout_ts to local client time
+        const localPlayoutTime = this.convertToLocalTime(playout_ts);
+        const now = performance.now();
+        const delayMs = localPlayoutTime - now;
+
+        log(`📅 Scheduled ${id}:`, 'info');
+        log(`  Server playout_ts: ${playout_ts}`, 'info');
+        log(`  Local playout time: ${localPlayoutTime.toFixed(0)}`, 'info');
+        log(`  Current time: ${now.toFixed(0)}`, 'info');
+        log(`  Delay: ${delayMs.toFixed(0)}ms`, 'info');
+
+        if (delayMs > 0) {
+          // Schedule for future
+          const timerId = setTimeout(() => {
+            this.showImageNow(imageData, transition, duration_ms);
+          }, delayMs);
+
+          this.scheduledTransitions.push({ id, timerId });
+        } else if (delayMs > -2000) {
+          // Show immediately if late but within tolerance (audio buffering/latency)
+          // Increased tolerance to 2s to account for LiveKit audio buffering
+          log(`⚠️ Late by ${-delayMs.toFixed(0)}ms (audio latency), showing immediately`, 'warn');
+          this.showImageNow(imageData, transition, duration_ms);
+        } else {
+          // Too late, skip
+          log(`❌ Too late to show ${id} (${-delayMs.toFixed(0)}ms behind), skipping`, 'error');
+        }
+      }
+
+      // Show image immediately with crossfade
+      showImageNow(imageData, transition = 'crossfade', duration_ms = 400) {
+        const { id, image, caption, credit } = imageData;
+
+        log(`🎨 Showing: ${id}`, 'info');
+
+        // Get inactive buffer
+        const nextBuffer = this.activeBuffer === 'A' ? this.imageB : this.imageA;
+        const currentBuffer = this.activeBuffer === 'A' ? this.imageA : this.imageB;
+
+        // Load image into inactive buffer
+        nextBuffer.src = image.src;
+        nextBuffer.style.transition = `opacity ${duration_ms}ms ease-in-out`;
+
+        // Update caption
+        const captionEl = document.getElementById('caption');
+        if (caption) {
+          captionText.textContent = caption;
+          captionCredit.textContent = credit || '';
+          captionEl.classList.add('visible');
+        }
+
+        // Crossfade: show next, hide current
+        nextBuffer.style.opacity = '1';
+        currentBuffer.style.opacity = '0';
+
+        // Swap active buffer
+        this.activeBuffer = this.activeBuffer === 'A' ? 'B' : 'A';
+        this.currentImageId = id;
+
+        // Update stats
+        state.imagesShown = this.imageQueue.size;
+        updateStats();
+      }
+
+      // Clear all scheduled transitions
+      clearScheduled() {
+        this.scheduledTransitions.forEach(({ timerId }) => clearTimeout(timerId));
+        this.scheduledTransitions = [];
+      }
+
+      // Reset system
+      reset() {
+        this.clearScheduled();
+        this.imageQueue.clear();
+        this.currentImageId = null;
+        this.audioClockOffset = null;
+        this.timeOffset = null;
+        this.syncInitialized = false;
+        this.imageA.style.opacity = '0';
+        this.imageB.style.opacity = '0';
+        log('🔄 Image sync system reset', 'info');
+      }
+    }
+
+    // Create image sync instance
+    const imageSync = new ImageSyncSystem();
+
+    // Shared AudioContext for TTS playback
+    let audioContext = null;
+
+    startBtn.addEventListener('click', startExperience);
+    stopBtn.addEventListener('click', stopExperience);
+    micBtn.addEventListener('click', toggleSTT);
+    toggleLogsBtn.addEventListener('click', () => {
+      logsPanel.classList.toggle('visible');
+    });
+    toggleGestureBtn.addEventListener('click', toggleGestureControl);
+
+    // Initialize
+    log('🏛️ LiveKit Greek Civilization Kiosk - Full Integration');
+    log('━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+    log('');
+    log('✓ LiveKit WebRTC with DataChannel');
+    log('✓ Groq LLM (Llama 3.3 70B) via orchestrator');
+    log('✓ Speech-to-Text (Web Speech API)');
+    log('✓ Text-to-Speech (Browser TTS)');
+    log('✓ Image Sync System with playout_ts');
+    log('✓ Crossfade renderer (two-buffer)');
+    log('✓ ImageScreener CDN warming & caching');
+    log('✓ MediaPipe gesture recognition (touchless control)');
+    log('');
+    log('━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+    log('🎤 Click "Start Listening" to ask about Greek civilization');
+    log('🖼️ Images will sync automatically with AI responses!');
+    log('🤚 Click "Enable Gestures" for touchless interaction!');
+  </script>
+</body>
+</html>

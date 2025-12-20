@@ -123,11 +123,11 @@
             text-align: center;
             max-width: 500px;
         }
-        .payment-title { font-size: 2rem; margin-bottom: 1rem; }
-        .payment-instructions { font-size: 1rem; color: var(--text-secondary); margin-bottom: 2rem; }
-        #qr-code { width: 300px; height: 300px; background-color: white; border-radius: 8px; margin: 0 auto; }
-        #qr-code-img { width: 100%; height: 100%; border-radius: 8px; }
-        #payment-status { margin-top: 2rem; font-size: 1.2rem; font-weight: 500; }
+        .payment-title { font-size: 2rem; margin-bottom: 2rem; }
+        .payment-price { font-size: 3rem; font-weight: 700; color: var(--secondary-color); margin-bottom: 1.5rem; }
+        .payment-instructions { font-size: 1.3rem; color: var(--text-color); margin-bottom: 1rem; }
+        .payment-charity { font-size: 1rem; color: var(--text-secondary); font-style: italic; margin-bottom: 2rem; }
+        #payment-status { margin-top: 2rem; font-size: 1.2rem; font-weight: 500; color: var(--text-secondary); }
         #payment-status.success { color: var(--success-color); }
         #payment-status.error { color: var(--error-color); }
 
@@ -167,6 +167,23 @@
         }
         .image-caption.visible {
             opacity: 1;
+        }
+
+        #session-timer {
+            position: absolute;
+            top: 1.5rem;
+            right: 1.5rem;
+            font-size: 2rem;
+            font-weight: 700;
+            color: white;
+            background-color: rgba(0, 0, 0, 0.5);
+            padding: 0.5rem 1rem;
+            border-radius: 8px;
+            z-index: 10;
+            transition: color 0.3s;
+        }
+        #session-timer.warning {
+            color: var(--error-color);
         }
 
         .interaction-panel {
@@ -223,18 +240,17 @@
     <div id="payment-view" class="view">
         <div class="payment-box">
             <h2 class="payment-title">Unlock Your Journey</h2>
-            <p class="payment-instructions">Scan the QR code with your UPI app to start the interactive tour.</p>
-            <div id="qr-code">
-                <!-- QR Code will be generated here -->
-                <img id="qr-code-img" src="" alt="Scan to Pay">
-            </div>
-            <p id="payment-status">Waiting for payment...</p>
+            <p class="payment-price">₹20 per session</p>
+            <p class="payment-instructions">Please pay the operator to begin your interactive tour</p>
+            <p class="payment-charity">A portion of proceeds will be donated to charity</p>
+            <p id="payment-status">Waiting for operator confirmation...</p>
         </div>
     </div>
 
     <!-- Active View (Main Interaction) -->
     <div id="active-view" class="view">
         <div class="image-display">
+            <div id="session-timer"></div>
             <img id="image-buffer-1" class="main-image" alt="Greek Civilization">
             <img id="image-buffer-2" class="main-image" alt="Greek Civilization">
             <div id="image-caption" class="image-caption"></div>
@@ -252,7 +268,6 @@
     <script>
         const ORCHESTRATOR_URL = 'http://localhost:3000';
         const KIOSK_ID = 'web-kiosk-002';
-        const SCREENSAVER_IMAGES = ['/screensaver/img1.svg', '/screensaver/img2.svg', '/screensaver/img3.svg'];
 
         // --- State Management ---
         const AppState = {
@@ -276,10 +291,23 @@
         // --- App Logic ---
         let livekit = { room: null, sessionId: null };
         let stt = { recognition: null, isListening: false };
-        let screensaver = { timer: null, currentImageIndex: 0 };
-        let imageSync = { buffer1: document.getElementById('image-buffer-1'), buffer2: document.getElementById('image-buffer-2'), activeBuffer: 1, timeOffset: 0, scheduled: new Map() };
-        let audioPlayer = { context: null, queue: [], isPlaying: false };
+        let screensaver = { timer: null, currentImageIndex: 0, images: [] };
+        let sessionTimer = { interval: null, remaining: 0 };
+        let audioContext = null; // Shared AudioContext for TTS
+        let imageSync = null; // Will be initialized as ImageSyncSystem
         
+        async function fetchScreensaverImages() {
+            try {
+                const response = await fetch('/api/screensaver-images');
+                if (!response.ok) return [];
+                const imagePaths = await response.json();
+                return imagePaths;
+            } catch (error) {
+                console.error('Failed to fetch screensaver images:', error);
+                return [];
+            }
+        }
+
         function changeState(newState) {
             if (!views[newState]) return;
             views[currentState].classList.remove('visible');
@@ -290,6 +318,7 @@
             if (currentState === AppState.IDLE) {
                 startScreensaver();
                 if (livekit.room) livekit.room.disconnect();
+                if (sessionTimer.interval) clearInterval(sessionTimer.interval);
             } else if (currentState === AppState.PAYMENT) {
                 stopScreensaver();
                 handlePayment();
@@ -299,13 +328,19 @@
         }
 
         // --- Screensaver Logic ---
-        function startScreensaver() {
+        async function startScreensaver() {
             const screensaverEl = document.getElementById('screensaver');
             if (!screensaverEl) return;
             
+            if (screensaver.images.length === 0) {
+                screensaver.images = await fetchScreensaverImages();
+            }
+            
+            if (screensaver.images.length === 0) return;
+
             // Preload images
             if (screensaverEl.children.length === 0) {
-                SCREENSAVER_IMAGES.forEach(src => {
+                screensaver.images.forEach(src => {
                     const img = document.createElement('img');
                     img.src = src;
                     screensaverEl.appendChild(img);
@@ -329,27 +364,70 @@
         }
 
         // --- Payment Logic ---
-        async function handlePayment() {
-            const qrImg = document.getElementById('qr-code-img');
+        function handlePayment() {
             const paymentStatus = document.getElementById('payment-status');
-            try {
-                // In a real scenario, this would call the orchestrator to get a QR code
-                // For this demo, we'll use a placeholder and simulate success
-                paymentStatus.textContent = 'Generating QR Code...';
-                qrImg.src = `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=upi://pay?pa=dummy@upi&pn=Kiosk&am=10`; // Dummy QR
-                paymentStatus.textContent = 'Please scan to pay. Waiting for confirmation...';
-                
-                // Simulate successful payment after a delay
-                setTimeout(() => {
-                    paymentStatus.textContent = 'Payment Successful! Starting your session...';
-                    paymentStatus.classList.add('success');
-                    setTimeout(() => changeState(AppState.ACTIVE), 2000);
-                }, 8000);
+            const kioskId = `kiosk_${Math.random().toString(36).substr(2, 5)}`;
+            paymentStatus.textContent = `Waiting for operator confirmation for Kiosk ID: ${kioskId}`;
 
-            } catch (error) {
-                paymentStatus.textContent = 'Could not initiate payment. Please try again.';
+            const ws = new WebSocket(`${ORCHESTRATOR_URL.replace('http', 'ws')}?role=kiosk&kioskId=${kioskId}`);
+
+            ws.onopen = () => {
+                console.log('Connected to orchestrator for payment confirmation.');
+            };
+
+            ws.onmessage = (event) => {
+                try {
+                    const message = JSON.parse(event.data);
+                    if (message.type === 'payment_confirmed') {
+                        paymentStatus.textContent = 'Payment confirmed! Starting your session...';
+                        paymentStatus.classList.add('success');
+                        ws.close();
+                        setTimeout(() => changeState(AppState.ACTIVE), 2000);
+                    }
+                } catch (e) {
+                    console.error('Error parsing payment message:', e);
+                }
+            };
+
+            ws.onclose = () => {
+                console.log('Payment WebSocket closed.');
+                if (currentState === AppState.PAYMENT) {
+                    // Could add logic to show an error or retry
+                }
+            };
+
+            ws.onerror = (error) => {
+                console.error('Payment WebSocket error:', error);
+                paymentStatus.textContent = 'Connection error. Please contact staff.';
                 paymentStatus.classList.add('error');
-            }
+            };
+        }
+
+        // --- Timer Logic ---
+        function startTimer(duration) {
+            const timerEl = document.getElementById('session-timer');
+            sessionTimer.remaining = duration;
+
+            const updateDisplay = () => {
+                const minutes = Math.floor(sessionTimer.remaining / 60);
+                const seconds = sessionTimer.remaining % 60;
+                timerEl.textContent = `${minutes}:${seconds.toString().padStart(2, '0')}`;
+                if (sessionTimer.remaining <= 30) {
+                    timerEl.classList.add('warning');
+                } else {
+                    timerEl.classList.remove('warning');
+                }
+            };
+
+            updateDisplay();
+
+            sessionTimer.interval = setInterval(() => {
+                sessionTimer.remaining--;
+                updateDisplay();
+                if (sessionTimer.remaining <= 0) {
+                    endSession('timer_expired');
+                }
+            }, 1000);
         }
 
         // --- Active Session Logic ---
@@ -363,22 +441,36 @@
                     body: JSON.stringify({ kiosk_id: KIOSK_ID })
                 });
                 if (!response.ok) throw new Error('Failed to create session');
-                const { session_id, token, livekit_url } = await response.json();
+                const { session_id, token, livekit_url, duration_seconds } = await response.json();
                 livekit.sessionId = session_id;
+
+                // Start the session timer
+                startTimer(duration_seconds || 300);
 
                 livekit.room = new LivekitClient.Room();
                 await livekit.room.connect(livekit_url, token);
                 console.log('LiveKit DataChannel connected.');
 
-                livekit.room.on(LivekitClient.RoomEvent.DataReceived, (payload) => {
+                livekit.room.on(LivekitClient.RoomEvent.DataReceived, async (payload) => {
                     const msg = JSON.parse(new TextDecoder().decode(payload));
-                    if (msg.type === 'img_show') {
-                        scheduleImage(msg);
-                    } else if (msg.type === 'time_sync' && msg.server_time) {
-                        imageSync.timeOffset = msg.server_time - performance.now();
-                    } else if (msg.type === 'end_chat') {
-                        console.log('[END_CHAT] Signal received from LLM - ending session');
-                        setTimeout(() => endSession(), 3000); // Give time for final audio to play
+                    console.log(`[DataChannel] ${msg.type}`, msg);
+
+                    switch (msg.type) {
+                        case 'img_preload':
+                            await imageSync.handlePreload(msg);
+                            break;
+                        case 'img_show':
+                            imageSync.handleShow(msg);
+                            break;
+                        case 'time_sync':
+                            if (msg.server_time) imageSync.initializeSync(msg.server_time);
+                            break;
+                        case 'end_chat':
+                            console.log('[END_CHAT] Signal received from LLM');
+                            endSession('llm_end');
+                            break;
+                        default:
+                            console.warn(`[DataChannel] Unknown type: ${msg.type}`);
                     }
                 });
 
@@ -391,31 +483,46 @@
             startSTT();
         }
 
-        function endSession() {
-            console.log('[SESSION] Ending session...');
+        async function endSession(reason = 'manual') {
+            console.log(`[SESSION] Ending session (reason: ${reason})...`);
+            
+            if (sessionTimer.interval) {
+                clearInterval(sessionTimer.interval);
+                sessionTimer.interval = null;
+            }
 
-            // Stop STT
+            // Stop STT immediately
             if (stt.recognition) {
                 stt.recognition.stop();
                 stt.isListening = false;
             }
 
-            // Disconnect LiveKit
+            if (reason === 'timer_expired') {
+                try {
+                    const response = await fetch(`${ORCHESTRATOR_URL}/session/${livekit.sessionId}/end`, { method: 'POST' });
+                    const data = await response.json();
+                    if (data.audio_base64) {
+                        await playAudioWithHTML5(data.audio_base64);
+                    }
+                } catch (error) {
+                    console.error('Failed to get goodbye message:', error);
+                }
+            }
+
+            // Disconnect LiveKit 
             if (livekit.room) {
                 livekit.room.disconnect();
                 livekit.room = null;
                 livekit.sessionId = null;
             }
 
-            // Clear audio queue
-            audioPlayer.queue = [];
-            audioPlayer.isPlaying = false;
+            // Reset image sync system
+            if (imageSync) {
+                imageSync.reset();
+            }
 
-            // Clear image sync
-            imageSync.scheduled.clear();
-
-            // Return to idle
-            changeState(AppState.IDLE);
+            // Return to idle after a short delay
+            setTimeout(() => changeState(AppState.IDLE), 2000);
         }
 
         function startSTT() {
@@ -434,11 +541,30 @@
                 micBtn.classList.add('listening');
                 micBtn.textContent = '...';
             };
+            stt.recognition.onerror = (event) => {
+                console.log(`[STT] Error: ${event.error}`);
+                if (event.error === 'aborted') {
+                    console.log('[STT] Aborted, will retry...');
+                }
+            };
+
             stt.recognition.onend = () => {
                 stt.isListening = false;
                 micBtn.classList.remove('listening');
                 micBtn.textContent = '🎤';
-                if (currentState === AppState.ACTIVE) stt.recognition.start(); // Auto-restart
+
+                // Auto-restart with delay to prevent infinite loop
+                if (currentState === AppState.ACTIVE) {
+                    setTimeout(() => {
+                        if (currentState === AppState.ACTIVE) {
+                            try {
+                                stt.recognition.start();
+                            } catch (error) {
+                                console.error('[STT] Failed to restart:', error);
+                            }
+                        }
+                    }, 500);
+                }
             };
             stt.recognition.onresult = (event) => {
                 let final = '';
@@ -456,91 +582,331 @@
 
         async function sendToLLM(text) {
             try {
+                console.log(`[LLM] Sending: "${text}"`);
+
                 const response = await fetch(`${ORCHESTRATOR_URL}/converse`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ session_id: livekit.sessionId, message: text })
                 });
+
                 if (!response.ok) throw new Error('LLM request failed');
+
                 const data = await response.json();
-                
+                console.log(`[LLM] Response: "${data.assistant_response}"`);
+
+                // Play TTS audio from base64 response
                 if (data.audio_base64) {
-                    playAudio(data.audio_base64);
+                    console.log(`[AUDIO] Playing TTS (${(data.audio_base64.length / 1024).toFixed(1)}KB)`);
+
+                    // Try HTML5 Audio element first (more reliable with autoplay)
+                    try {
+                        await playAudioWithHTML5(data.audio_base64);
+                    } catch (error) {
+                        console.warn(`[AUDIO] HTML5 failed, trying Web Audio API:`, error);
+                        await playAudioBase64(data.audio_base64);
+                    }
+                } else if (data.tts_error) {
+                    console.warn(`[TTS] Error: ${data.tts_error}`);
                 }
+
+                // Images will be sent via DataChannel
+
             } catch (error) {
-                console.error("LLM Error:", error);
+                console.error("[LLM] Error:", error);
                 sttFinal.textContent = "Sorry, I had trouble responding.";
             }
         }
 
-        async function playAudio(base64) {
-            audioPlayer.queue.push(base64);
-            console.log(`[AUDIO_QUEUE] Added to queue (size: ${audioPlayer.queue.length})`);
+        async function playAudioWithHTML5(base64Audio) {
+            return new Promise((resolve, reject) => {
+                try {
+                    console.log('[AUDIO] Using HTML5 Audio element');
 
-            if (!audioPlayer.isPlaying) {
-                playNextInQueue();
-            }
+                    const audio = new Audio();
+                    audio.src = `data:audio/mp3;base64,${base64Audio}`;
+                    audio.volume = 1.0;
+
+                    audio.onloadedmetadata = () => {
+                        console.log(`[AUDIO] Loaded: ${audio.duration.toFixed(2)}s`);
+                    };
+
+                    audio.onplay = () => {
+                        console.log('[AUDIO] HTML5 playing');
+                    };
+
+                    audio.onended = () => {
+                        console.log('[AUDIO] HTML5 finished');
+                        resolve();
+                    };
+
+                    audio.onerror = (e) => {
+                        console.error('[AUDIO] HTML5 error:', audio.error);
+                        reject(new Error(audio.error?.message || 'Audio playback failed'));
+                    };
+
+                    // Play the audio
+                    audio.play().catch(err => {
+                        console.error('[AUDIO] play() rejected:', err);
+                        reject(err);
+                    });
+
+                } catch (error) {
+                    console.error('[AUDIO] HTML5 setup error:', error);
+                    reject(error);
+                }
+            });
         }
 
-        async function playNextInQueue() {
-            if (audioPlayer.queue.length === 0) {
-                audioPlayer.isPlaying = false;
-                console.log('[AUDIO_QUEUE] Queue empty');
-                return;
-            }
-
-            audioPlayer.isPlaying = true;
-            const base64 = audioPlayer.queue.shift();
-            console.log(`[AUDIO_QUEUE] Playing (remaining: ${audioPlayer.queue.length})`);
-
-            if (!audioPlayer.context) audioPlayer.context = new (window.AudioContext || window.webkitAudioContext)();
-
+        async function playAudioBase64(base64Audio) {
             try {
-                const binary = atob(base64);
-                const bytes = new Uint8Array(binary.length);
-                for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+                console.log(`[AUDIO] Decoding (${(base64Audio.length / 1024).toFixed(1)}KB base64)`);
 
-                const buffer = await audioPlayer.context.decodeAudioData(bytes.buffer);
-                const source = audioPlayer.context.createBufferSource();
-                source.buffer = buffer;
-                source.connect(audioPlayer.context.destination);
+                // Create AudioContext if it doesn't exist
+                if (!audioContext) {
+                    audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                    console.log('[AUDIO] Created new AudioContext');
+                }
+
+                // Resume AudioContext if suspended (required by browser autoplay policies)
+                if (audioContext.state === 'suspended') {
+                    console.log('[AUDIO] Resuming AudioContext...');
+                    await audioContext.resume();
+                    console.log(`[AUDIO] AudioContext state: ${audioContext.state}`);
+                }
+
+                // Decode base64 to binary
+                const binaryString = atob(base64Audio);
+                console.log(`[AUDIO] Binary: ${(binaryString.length / 1024).toFixed(1)}KB`);
+
+                // Convert to ArrayBuffer
+                const arrayBuffer = new ArrayBuffer(binaryString.length);
+                const uint8Array = new Uint8Array(arrayBuffer);
+                for (let i = 0; i < binaryString.length; i++) {
+                    uint8Array[i] = binaryString.charCodeAt(i);
+                }
+
+                console.log('[AUDIO] Decoding MP3...');
+                const audioBuffer = await audioContext.decodeAudioData(arrayBuffer);
+                console.log(`[AUDIO] Decoded: ${audioBuffer.duration.toFixed(2)}s`);
+
+                const source = audioContext.createBufferSource();
+                source.buffer = audioBuffer;
+                source.connect(audioContext.destination);
 
                 source.onended = () => {
-                    console.log('[AUDIO_QUEUE] Audio finished');
-                    setTimeout(() => playNextInQueue(), 100);
+                    console.log('[AUDIO] Finished playing');
                 };
 
                 source.start(0);
+                console.log('[AUDIO] Started playing');
+
             } catch (error) {
-                console.error('[AUDIO_QUEUE] Playback error:', error);
-                setTimeout(() => playNextInQueue(), 100);
+                console.error('[AUDIO] Error:', error);
             }
         }
 
-        function scheduleImage(imgData) {
-            const localPlayoutTime = imgData.playout_ts - imageSync.timeOffset;
-            const delay = localPlayoutTime - performance.now();
-            
-            if (delay > -200) { // Tolerate small lateness
-                setTimeout(() => showImage(imgData), Math.max(0, delay));
+        // --- Image Sync System ---
+        class ImageSyncSystem {
+            constructor() {
+                this.imageQueue = new Map();
+                this.currentImageId = null;
+                this.timeOffset = null;
+                this.syncInitialized = false;
+                this.scheduledTransitions = [];
+
+                this.imageA = document.getElementById('image-buffer-1');
+                this.imageB = document.getElementById('image-buffer-2');
+                this.activeBuffer = 'A';
+            }
+
+            initializeSync(serverPlayoutTs) {
+                if (this.syncInitialized) return;
+
+                const clientNow = performance.now();
+                this.timeOffset = serverPlayoutTs - clientNow;
+                this.syncInitialized = true;
+
+                console.log(`[ImageSync] Time sync initialized: offset=${this.timeOffset}ms`);
+            }
+
+            convertToLocalTime(serverPlayoutTs) {
+                if (!this.syncInitialized) {
+                    console.warn('[ImageSync] Time sync not initialized, initializing now');
+                    this.initializeSync(serverPlayoutTs);
+                    return performance.now();
+                }
+                return serverPlayoutTs - this.timeOffset;
+            }
+
+            async handlePreload(message) {
+                const { id, cdn_url, playout_ts, title, category, caption, credit } = message;
+
+                if (!this.syncInitialized && playout_ts) {
+                    this.initializeSync(playout_ts);
+                }
+
+                const localTime = this.convertToLocalTime(playout_ts);
+                const delay = localTime - performance.now();
+                console.log(`[ImageSync] Preload ${id} (playout in ${delay.toFixed(0)}ms)`);
+
+                const img = new Image();
+                img.crossOrigin = 'anonymous';
+
+                return new Promise((resolve) => {
+                    img.onload = () => {
+                        this.imageQueue.set(id, {
+                            id,
+                            cdn_url,
+                            playout_ts,
+                            image: img,
+                            preloaded: true,
+                            caption: caption || title || '',
+                            credit: credit || 'Wikimedia Commons'
+                        });
+
+                        console.log(`[ImageSync] Image preloaded: ${id}`);
+                        resolve(true);
+                    };
+
+                    img.onerror = () => {
+                        console.error(`[ImageSync] Failed to load: ${cdn_url}`);
+                        const placeholderSvg = this.generatePlaceholderSVG(title || id, category || 'Greek Civilization');
+                        img.src = placeholderSvg;
+                        resolve(false);
+                    };
+
+                    img.src = cdn_url;
+                });
+            }
+
+            generatePlaceholderSVG(title, category) {
+                const categoryColors = {
+                    'architecture': '#4A5568',
+                    'gods': '#805AD5',
+                    'daily_life': '#DD6B20',
+                    'pottery': '#C05621',
+                    'sculpture': '#718096',
+                    'philosophy': '#2D3748',
+                    'warfare': '#742A2A',
+                    'ships': '#2C5282',
+                    'default': '#4A5568'
+                };
+
+                const mainCategory = Object.keys(categoryColors).find(cat =>
+                    category.toLowerCase().includes(cat)
+                ) || 'default';
+
+                const color = categoryColors[mainCategory];
+                const displayTitle = title.replace(/_/g, ' ')
+                    .split(' ')
+                    .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+                    .join(' ');
+
+                const svg = `
+                    <svg xmlns="http://www.w3.org/2000/svg" width="1200" height="800" viewBox="0 0 1200 800">
+                        <defs>
+                            <linearGradient id="grad" x1="0%" y1="0%" x2="100%" y2="100%">
+                                <stop offset="0%" style="stop-color:${color};stop-opacity:1" />
+                                <stop offset="100%" style="stop-color:#1A202C;stop-opacity:1" />
+                            </linearGradient>
+                        </defs>
+                        <rect fill="url(#grad)" width="1200" height="800"/>
+                        <text x="50%" y="40%" fill="white" font-size="48" text-anchor="middle" font-family="Georgia, serif" font-weight="bold" opacity="0.9">
+                            ${displayTitle}
+                        </text>
+                        <text x="50%" y="50%" fill="white" font-size="28" text-anchor="middle" font-family="Arial, sans-serif" opacity="0.6">
+                            ${category.replace(/_/g, ' ').toUpperCase()}
+                        </text>
+                        <text x="50%" y="65%" fill="white" font-size="72" text-anchor="middle" opacity="0.3">
+                            🏛️
+                        </text>
+                    </svg>
+                `;
+
+                return 'data:image/svg+xml;base64,' + btoa(unescape(encodeURIComponent(svg)));
+            }
+
+            handleShow(message) {
+                const { id, transition, duration_ms } = message;
+
+                const imageData = this.imageQueue.get(id);
+                if (!imageData) {
+                    console.error(`[ImageSync] Image not preloaded: ${id}`);
+                    return;
+                }
+
+                const playout_ts = imageData.playout_ts;
+
+                if (!playout_ts) {
+                    console.warn(`[ImageSync] No playout_ts for ${id}, showing immediately`);
+                    this.showImageNow(imageData, transition, duration_ms);
+                    return;
+                }
+
+                const localPlayoutTime = this.convertToLocalTime(playout_ts);
+                const now = performance.now();
+                const delayMs = localPlayoutTime - now;
+
+                console.log(`[ImageSync] Scheduled ${id}: delay=${delayMs.toFixed(0)}ms`);
+
+                if (delayMs > 0) {
+                    const timerId = setTimeout(() => {
+                        this.showImageNow(imageData, transition, duration_ms);
+                    }, delayMs);
+
+                    this.scheduledTransitions.push({ id, timerId });
+                } else if (delayMs > -2000) {
+                    console.warn(`[ImageSync] Late by ${-delayMs.toFixed(0)}ms, showing immediately`);
+                    this.showImageNow(imageData, transition, duration_ms);
+                } else {
+                    console.error(`[ImageSync] Too late to show ${id} (${-delayMs.toFixed(0)}ms behind)`);
+                }
+            }
+
+            showImageNow(imageData, transition = 'crossfade', duration_ms = 400) {
+                const { id, image, caption, credit } = imageData;
+
+                console.log(`[ImageSync] Showing: ${id}`);
+
+                const nextBuffer = this.activeBuffer === 'A' ? this.imageB : this.imageA;
+                const currentBuffer = this.activeBuffer === 'A' ? this.imageA : this.imageB;
+
+                nextBuffer.src = image.src;
+                nextBuffer.style.transition = `opacity ${duration_ms}ms ease-in-out`;
+
+                const captionEl = document.getElementById('image-caption');
+                if (caption) {
+                    captionEl.textContent = caption;
+                    captionEl.classList.add('visible');
+                }
+
+                nextBuffer.classList.add('visible');
+                currentBuffer.classList.remove('visible');
+
+                this.activeBuffer = this.activeBuffer === 'A' ? 'B' : 'A';
+                this.currentImageId = id;
+            }
+
+            clearScheduled() {
+                this.scheduledTransitions.forEach(({ timerId }) => clearTimeout(timerId));
+                this.scheduledTransitions = [];
+            }
+
+            reset() {
+                this.clearScheduled();
+                this.imageQueue.clear();
+                this.currentImageId = null;
+                this.timeOffset = null;
+                this.syncInitialized = false;
+                this.imageA.classList.remove('visible');
+                this.imageB.classList.remove('visible');
+                console.log('[ImageSync] System reset');
             }
         }
 
-        function showImage(imgData) {
-            const activeImg = imageSync.activeBuffer === 1 ? imageSync.buffer1 : imageSync.buffer2;
-            const inactiveImg = imageSync.activeBuffer === 1 ? imageSync.buffer2 : imageSync.buffer1;
-            
-            inactiveImg.src = imgData.cdn_url;
-            
-            activeImg.classList.remove('visible');
-            inactiveImg.classList.add('visible');
-            
-            const captionEl = document.getElementById('image-caption');
-            captionEl.textContent = imgData.caption || '';
-            captionEl.classList.add('visible');
-            
-            imageSync.activeBuffer = imageSync.activeBuffer === 1 ? 2 : 1;
-        }
+        // Initialize ImageSyncSystem
+        imageSync = new ImageSyncSystem();
 
         // --- Event Listeners ---
         startKioskBtn.addEventListener('click', () => changeState(AppState.PAYMENT));

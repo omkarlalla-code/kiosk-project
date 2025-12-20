@@ -5,6 +5,23 @@ const path = require('path');
 const PORT = 8080;
 
 const server = http.createServer((req, res) => {
+  // API endpoint for screensaver images
+  if (req.url === '/api/screensaver-images') {
+    const imagesDir = path.join(__dirname, '..', 'public', 'images', 'greek');
+    fs.readdir(imagesDir, (err, files) => {
+      if (err) {
+        res.writeHead(500);
+        res.end('Server error reading images directory');
+        return;
+      }
+      const imageFiles = files.filter(file => /\.(jpg|jpeg|png|svg|webp)$/i.test(file));
+      const imagePaths = imageFiles.map(file => `/images/greek/${file}`);
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify(imagePaths));
+    });
+    return;
+  }
+
   let filePath = req.url;
   if (filePath === '/') {
     filePath = '/index.html';

@@ -1,0 +1,333 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kiosk Operator Panel</title>
+    <style>
+        :root {
+            --bg-color: #1E1E1E;
+            --surface-color: #2D2D2D;
+            --primary-color: #03a9f4; /* Light Blue */
+            --text-color: #E0E0E0;
+            --text-secondary: #A0A0A0;
+            --success-color: #4CAF50;
+            --error-color: #f44336;
+            --font-mono: 'Courier New', Courier, monospace;
+        }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            margin: 0;
+            padding: 1rem;
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+        }
+        h1, h2 {
+            font-weight: 600;
+            border-bottom: 1px solid #444;
+            padding-bottom: 0.5rem;
+            margin-bottom: 1rem;
+            color: var(--primary-color);
+        }
+        .container {
+            display: flex;
+            gap: 1.5rem;
+            flex: 1;
+            overflow: hidden;
+        }
+        .panel {
+            background-color: var(--surface-color);
+            border-radius: 8px;
+            padding: 1.5rem;
+            display: flex;
+            flex-direction: column;
+        }
+        /* --- Pending Payments Panel --- */
+        #payments-panel {
+            width: 350px;
+            flex-shrink: 0;
+        }
+        #pending-list, #active-list {
+            list-style: none;
+            padding: 0;
+        }
+        .pending-item, .active-item {
+            background-color: #3a3a3a;
+            padding: 1rem;
+            border-radius: 6px;
+            margin-bottom: 1rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .pending-item span, .active-item span {
+            font-weight: 500;
+        }
+        .timer {
+            font-family: var(--font-mono);
+            font-size: 1.1rem;
+            color: var(--success-color);
+            font-weight: bold;
+        }
+        .timer.warning {
+            color: var(--error-color);
+        }
+        .approve-btn {
+            background-color: var(--success-color);
+            color: white;
+            border: none;
+            padding: 0.5rem 1rem;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+        .approve-btn:hover {
+            background-color: #388e3c;
+        }
+        .terminate-btn {
+            background-color: var(--error-color);
+            color: white;
+            border: none;
+            padding: 0.5rem 1rem;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: background-color 0.2s;
+            margin-left: 0.5rem;
+        }
+        .terminate-btn:hover {
+            background-color: #d32f2f;
+        }
+        /* --- Live Log Panel --- */
+        #log-panel {
+            flex: 1;
+            overflow: hidden;
+        }
+        #log-container {
+            flex: 1;
+            background-color: #121212;
+            padding: 1rem;
+            border-radius: 6px;
+            overflow-y: auto;
+            font-family: var(--font-mono);
+            font-size: 0.875rem;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+        }
+    </style>
+</head>
+<body>
+    <h1>Kiosk Operator Panel</h1>
+    <div class="container">
+        <div id="payments-panel" class="panel">
+            <h2>Pending Payments</h2>
+            <ul id="pending-list">
+                <!-- JS will populate this -->
+            </ul>
+            <h2 style="margin-top: 2rem;">Active Sessions</h2>
+            <ul id="active-list">
+                <!-- JS will populate this -->
+            </ul>
+        </div>
+        <div id="log-panel" class="panel">
+            <h2>Live Log</h2>
+            <div id="log-container"></div>
+        </div>
+    </div>
+    <!-- JS Logic will be added here -->
+    <script>
+        const ORCHESTRATOR_WS_URL = 'ws://localhost:3000';
+        const pendingList = document.getElementById('pending-list');
+        const activeList = document.getElementById('active-list');
+        const logContainer = document.getElementById('log-container');
+        let socket;
+
+        function connect() {
+            socket = new WebSocket(`${ORCHESTRATOR_WS_URL}?role=operator`);
+
+            socket.onopen = () => {
+                console.log('Connected to orchestrator');
+                addLog('info', 'Connected to orchestrator WebSocket.');
+            };
+
+            socket.onmessage = (event) => {
+                try {
+                    const message = JSON.parse(event.data);
+                    handleSocketMessage(message);
+                } catch (e) {
+                    console.error('Failed to parse socket message:', e);
+                }
+            };
+
+            socket.onclose = () => {
+                console.log('Disconnected. Reconnecting in 3 seconds...');
+                addLog('error', 'WebSocket disconnected. Attempting to reconnect...');
+                setTimeout(connect, 3000);
+            };
+
+            socket.onerror = (error) => {
+                console.error('WebSocket error:', error);
+                addLog('error', 'WebSocket connection error.');
+            };
+        }
+
+        function handleSocketMessage(message) {
+            switch (message.type) {
+                case 'kiosk_waiting':
+                    addPendingKiosk(message.kioskId);
+                    break;
+                case 'kiosk_cancelled':
+                    removeKiosk(message.kioskId);
+                    break;
+                case 'sessions_update':
+                    updateActiveSessions(message.sessions);
+                    break;
+                case 'log_event':
+                    addLog(message.level, message.message, message.timestamp);
+                    break;
+            }
+        }
+
+        function addPendingKiosk(kioskId) {
+            if (document.getElementById(`kiosk-${kioskId}`)) return;
+
+            const listItem = document.createElement('li');
+            listItem.className = 'pending-item';
+            listItem.id = `kiosk-${kioskId}`;
+            
+            const text = document.createElement('span');
+            text.textContent = `Kiosk: ${kioskId}`;
+            
+            const approveBtn = document.createElement('button');
+            approveBtn.className = 'approve-btn';
+            approveBtn.textContent = 'Approve';
+            approveBtn.onclick = () => approvePayment(kioskId);
+            
+            listItem.appendChild(text);
+            listItem.appendChild(approveBtn);
+            pendingList.appendChild(listItem);
+        }
+
+        function approvePayment(kioskId) {
+            if (socket && socket.readyState === WebSocket.OPEN) {
+                socket.send(JSON.stringify({ type: 'approve_payment', kioskId }));
+                
+                const pendingItem = document.getElementById(`kiosk-${kioskId}`);
+                if (pendingItem) pendingItem.remove();
+
+                addActiveKiosk(kioskId);
+                addLog('info', `Sent approval for kiosk ${kioskId}`);
+            }
+        }
+
+        function addActiveKiosk(kioskId, sessionId = null) {
+            if (document.getElementById(`kiosk-${kioskId}`)) return;
+
+            const listItem = document.createElement('li');
+            listItem.className = 'active-item';
+            listItem.id = `kiosk-${kioskId}`;
+            if (sessionId) listItem.dataset.sessionId = sessionId;
+
+            const text = document.createElement('span');
+            text.textContent = `Kiosk: ${kioskId}`;
+
+            const timer = document.createElement('span');
+            timer.className = 'timer';
+            timer.textContent = '...';
+
+            const terminateBtn = document.createElement('button');
+            terminateBtn.className = 'terminate-btn';
+            terminateBtn.textContent = 'Terminate';
+            terminateBtn.onclick = () => terminateSession(kioskId);
+
+            listItem.appendChild(text);
+            listItem.appendChild(timer);
+            listItem.appendChild(terminateBtn);
+            activeList.appendChild(listItem);
+        }
+
+        function terminateSession(kioskId) {
+            const item = document.getElementById(`kiosk-${kioskId}`);
+            const sessionId = item ? item.dataset.sessionId : null;
+
+            if (confirm(`Are you sure you want to terminate session for ${kioskId}?`)) {
+                if (socket && socket.readyState === WebSocket.OPEN) {
+                    socket.send(JSON.stringify({
+                        type: 'terminate_session',
+                        kioskId,
+                        sessionId
+                    }));
+                    addLog('info', `Sent termination request for kiosk ${kioskId}`);
+                }
+            }
+        }
+
+        function removeKiosk(kioskId) {
+            const item = document.getElementById(`kiosk-${kioskId}`);
+            if (item) item.remove();
+        }
+
+        function updateActiveSessions(sessions) {
+            // First, remove any active kiosks from the UI that are no longer in the update
+            const activeKiosksInUI = new Set(Array.from(activeList.children).map(child => child.id.replace('kiosk-', '')));
+            const activeKiosksInUpdate = new Set(sessions.map(s => s.kioskId));
+            
+            for (const kioskId of activeKiosksInUI) {
+                if (!activeKiosksInUpdate.has(kioskId)) {
+                    removeKiosk(kioskId);
+                }
+            }
+            
+            // Now, update or add kiosks from the message
+            sessions.forEach(session => {
+                let item = document.getElementById(`kiosk-${session.kioskId}`);
+                if (!item) {
+                    addActiveKiosk(session.kioskId, session.sessionId);
+                    item = document.getElementById(`kiosk-${session.kioskId}`);
+                }
+
+                // Update sessionId if needed
+                if (session.sessionId && item) {
+                    item.dataset.sessionId = session.sessionId;
+                }
+
+                const timer = item.querySelector('.timer');
+                if (timer) {
+                    const minutes = Math.floor(session.remaining / 60);
+                    const seconds = session.remaining % 60;
+                    timer.textContent = `${minutes}:${seconds.toString().padStart(2, '0')}`;
+                    timer.classList.toggle('warning', session.remaining <= 30);
+                }
+            });
+        }
+
+        function addLog(level, message, timestamp) {
+            const entry = document.createElement('div');
+            entry.className = 'log-entry';
+
+            const ts = document.createElement('span');
+            ts.className = 'timestamp';
+            ts.textContent = new Date(timestamp || Date.now()).toLocaleTimeString();
+
+            const lvl = document.createElement('span');
+            lvl.className = `level-${level}`;
+            lvl.textContent = `[${level.toUpperCase()}] `;
+
+            const msg = document.createElement('span');
+            msg.textContent = message;
+
+            entry.appendChild(ts);
+            entry.appendChild(lvl);
+            entry.appendChild(msg);
+
+            logContainer.appendChild(entry);
+            logContainer.scrollTop = logContainer.scrollHeight;
+        }
+
+        // Initial connection
+        connect();
+    </script>
+</body>
+</html>
